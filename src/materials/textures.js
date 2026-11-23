@@ -444,6 +444,8 @@ export function leafCluster(seed = 1, tint = [0.20, 0.34, 0.13]) {
 /** Palm frond: rachis + pinnae, alpha-tested. */
 export function palmFrond() {
   return memo('frond', () => {
+    // NOTE: geometry in trees.js is a *bent* strip; this texture supplies the
+    // rachis and pinnae along it.
     const W = 256, H = 512;
     const { c, x } = canvas(W, H);
     const r = rng(1337);

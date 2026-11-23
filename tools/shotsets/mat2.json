@@ -1,0 +1,6 @@
+[
+  { "name": "m-soffit", "cam": [-52, 5.0, -34], "look": [-70, 14, -48], "fov": 66, "hour": 15.5,
+    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&/woodSoffit|soffitPanel/.test(o.name)){o.material=new THREE.MeshBasicMaterial({color:0x00ff00});n++;}});return 'soffit->green '+n})()" },
+  { "name": "m-roof", "cam": [-52, 5.0, -34], "look": [-70, 14, -48], "fov": 66,
+    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&/roofRib/.test(o.name)){o.material=new THREE.MeshBasicMaterial({color:0xff00ff});n++;}});return 'roof->magenta '+n})()" }
+]

@@ -12,6 +12,7 @@ import { buildMainBuilding, MAIN } from './dct-main.js';
 import { buildGate, GATE } from './gate.js';
 import { Vegetation } from './vegetation.js';
 import { TreeKit } from './trees.js';
+import { put } from './place.js';
 import { Builder, box, cylinder, sphere, TEXSCALE } from './kit.js';
 import { buildTown } from './town.js';
 import { buildTerrain } from './terrain.js';
@@ -82,22 +83,27 @@ export class World {
     const PZ = L.plaza.cz, PX = L.plaza.cx;
 
     /* ---------------------------------------------------- central fountain */
-    const R = 4.2;
-    b.add(cylinder(R + 0.5, R + 0.7, 0.55, 28), 'concreteTrim', { pos: [PX, 0.27, PZ], collide: true });
-    b.add(cylinder(R, R, 0.42, 28), 'concreteDark', { pos: [PX, 0.55, PZ] });
-    b.add(cylinder(R - 0.35, R - 0.35, 0.06, 28), 'water', { pos: [PX, 0.62, PZ] });
-    // tiered centre
-    b.add(cylinder(0.8, 1.1, 1.1, 14), 'concreteTrim', { pos: [PX, 1.15, PZ] });
-    b.add(cylinder(1.5, 1.6, 0.16, 20), 'concreteTrim', { pos: [PX, 1.75, PZ] });
-    b.add(cylinder(0.42, 0.55, 1.0, 12), 'concreteTrim', { pos: [PX, 2.3, PZ] });
-    b.add(sphere(0.42, 12), 'statue', { pos: [PX, 3.15, PZ] });
-    // water jets (thin cones, cheap)
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      b.add(cylinder(0.02, 0.05, 1.2, 5), 'water', {
-        pos: [PX + Math.cos(a) * 1.1, 2.4, PZ + Math.sin(a) * 1.1],
-        rot: [Math.cos(a) * 0.3, 0, -Math.sin(a) * 0.3],
-      });
+    // A modest municipal fountain: low octagonal basin, one raised bowl, and a
+    // slim finial. The reference plaza has nothing monumental here — keeping it
+    // small is what makes the shrine behind it read tall.
+    const RB = 3.1;
+    b.add(cylinder(RB + 0.42, RB + 0.55, 0.42, 8), 'concreteTrim', { pos: [PX, 0.21, PZ], collide: true });
+    b.add(cylinder(RB, RB, 0.3, 8), 'concreteDark', { pos: [PX, 0.55, PZ] });
+    b.add(cylinder(RB - 0.28, RB - 0.28, 0.05, 8), 'water', { pos: [PX, 0.68, PZ] });
+    // central pedestal + one shallow bowl
+    b.add(cylinder(0.44, 0.62, 0.95, 12), 'concreteTrim', { pos: [PX, 1.12, PZ] });
+    b.add(cylinder(1.15, 1.22, 0.11, 20), 'concreteTrim', { pos: [PX, 1.62, PZ] });
+    b.add(cylinder(0.9, 0.9, 0.04, 20), 'water', { pos: [PX, 1.70, PZ] });
+    b.add(cylinder(0.2, 0.28, 0.85, 10), 'concreteTrim', { pos: [PX, 2.05, PZ] });
+    // small bronze finial — a saint's silhouette, not a giant ball
+    b.add(cylinder(0.16, 0.22, 0.5, 10), 'statueRobed', { pos: [PX, 2.68, PZ] });
+    b.add(sphere(0.11, 10), 'statue', { pos: [PX, 3.0, PZ] });
+    // hair-thin water jets, barely visible but they catch the light
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      put(b, cylinder(0.015, 0.03, 0.7, 4), 'water',
+        [PX + Math.cos(a) * 0.55, 2.05, PZ + Math.sin(a) * 0.55],
+        { rot: [Math.cos(a) * 0.22, 0, -Math.sin(a) * 0.22] });
     }
 
     /* -------------------------------------------------- plaza lamp posts */
@@ -293,29 +299,38 @@ export class World {
       addTree({ x, z, palm: true, height: 8.5 + (Math.abs(x) % 3) });
     }
 
-    // ---- plaza trees: ring inside the park
+    // ---- plaza trees: perimeter only, leaving the central axis and the
+    // sightline from the highway to the shrine completely open. This matches
+    // the real park, which is lawn + paths with shade trees at its edges.
     const PX = L.plaza.cx, PZ = L.plaza.cz;
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2 + 0.2;
-      const rr = 22 + (i % 3) * 1.4;
-      addTree({
-        x: PX + Math.cos(a) * rr, z: PZ + Math.sin(a) * rr,
-        height: 11 + (i % 4) * 1.3, spread: 5.4, kind: i % 3 === 0 ? 'dark' : 'near',
-      });
+    const ph0 = L.plaza.halfX, hz0 = L.plaza.halfZ;
+    for (let i = 0; i < 10; i++) {
+      const t = i / 9;
+      // along the north edge
+      addTree({ x: PX - ph0 + 2 + t * (2 * ph0 - 4), z: PZ - hz0 + 1.8, height: 10 + (i % 4) * 1.2, spread: 4.6, kind: 'near' });
+      // along the south edge
+      addTree({ x: PX - ph0 + 2 + t * (2 * ph0 - 4), z: PZ + hz0 - 1.8, height: 9.6 + (i % 3) * 1.4, spread: 4.4, kind: i % 2 ? 'mid' : 'near' });
     }
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + 0.6;
-      addTree({ x: PX + Math.cos(a) * 16.5, z: PZ + Math.sin(a) * 16.5, palm: true, height: 9.4 });
+    for (const s2 of [-1, 1]) {
+      for (const t of [0.28, 0.52, 0.76]) {
+        addTree({ x: PX + s2 * (ph0 - 1.8), z: PZ - hz0 + 2 + t * (2 * hz0 - 4), height: 10 + t * 2, spread: 4.4, kind: 'mid' });
+      }
+    }
+    // four palms marking the corners of the circular centre
+    for (const [dx, dz] of [[-7, -7], [7, -7], [-7, 7], [7, 7]]) {
+      addTree({ x: PX + dx, z: PZ + dz, palm: true, height: 10.5 });
     }
 
     // ---- hedges: plaza border + church forecourt + campus
     const ph = L.plaza.halfX;
-    const hz = L.plaza.halfZ;
-    veg.hedgeBox(PX - ph + 1.2, PZ + hz - 1.6, PX + ph - 1.2, PZ + hz - 0.4, 0, 0.75);
-    veg.hedgeBox(PX - ph + 1.2, PZ - hz + 0.4, PX + ph - 1.2, PZ - hz + 1.6, 0, 0.75);
-    veg.hedgeBox(PX - ph + 0.4, PZ - hz + 1.6, PX - ph + 1.6, PZ + hz - 1.6, 0, 0.75);
-    veg.hedgeBox(PX + ph - 1.6, PZ - hz + 1.6, PX + ph - 0.4, PZ + hz - 1.6, 0, 0.75);
-    veg.hedgeBox(-46, -66, -30, -64.6, 0, 0.7);
+    const hzz = L.plaza.halfZ;
+    // Low hedges only along the far edges, broken where the paths leave the park.
+    veg.hedgeBox(PX - ph + 1.2, PZ + hzz - 1.4, PX - 4.0, PZ + hzz - 0.5, 0, 0.62);
+    veg.hedgeBox(PX + 4.0, PZ + hzz - 1.4, PX + ph - 1.2, PZ + hzz - 0.5, 0, 0.62);
+    veg.hedgeBox(PX - ph + 1.2, PZ - hzz + 0.5, PX - 4.0, PZ - hzz + 1.4, 0, 0.62);
+    veg.hedgeBox(PX + 4.0, PZ - hzz + 0.5, PX + ph - 1.2, PZ - hzz + 1.4, 0, 0.62);
+    veg.hedgeBox(PX - ph + 0.5, PZ - hzz + 3.0, PX - ph + 1.4, PZ + hzz - 3.0, 0, 0.62);
+    veg.hedgeBox(PX + ph - 1.4, PZ - hzz + 3.0, PX + ph - 0.5, PZ + hzz - 3.0, 0, 0.62);
 
     // ---- shrubs / flower beds at the church portico & the gate island
     for (const [x, z, r] of [[-50, -36, 1.3], [-50, -66, 1.2], [-40, -30, 1.4], [-40, -74, 1.2],
@@ -330,7 +345,7 @@ export class World {
     veg.grassPatch(-34, 14, -12, 40, { density: 1.0 });
     veg.grassPatch(-30, -24, 18, -12, { density: 0.9 });
     veg.grassPatch(-70, -30, -30, -24, { density: 0.8 });
-    veg.grassPatch(PX - ph, PZ - hz, PX + ph, PZ + hz, { density: 0.4 });
+    veg.grassPatch(PX - ph, PZ - hz0, PX + ph, PZ + hz0, { density: 0.4 });
 
     // Street trees along the highway + the market square
     for (let z = -260; z < 260; z += 26) {

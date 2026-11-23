@@ -111,6 +111,12 @@ export function buildMaterials() {
   M.rockCap = STD({ map: T.rockFaceTex('#6f6a61'), roughness: 0.92 });
   M.wood = STD({ map: T.wood('#7a4522'), roughness: 0.55, metalness: 0.0 });
   M.woodDark = STD({ map: T.wood('#4b2a14'), roughness: 0.5 });
+  // Soffit timber: lighter so a deep porch ceiling reads as wood, not a void.
+  // Soffit timber. Kept deliberately pale (a limed timber ceiling): surfaces
+  // that are permanently in shadow have to be high-albedo or they render black
+  // no matter how bright the fill is.
+  M.woodSoffit = STD({ map: T.wood('#a8845c'), roughness: 0.7 });
+  M.soffitPanel = STD({ map: T.wood('#d8cbb2'), roughness: 0.78 });
   M.woodPale = STD({ map: T.wood('#a3763f'), roughness: 0.6 });
 
   /* ---------------------------------------------------------------- glass */
@@ -128,7 +134,11 @@ export function buildMaterials() {
     map: T.glazing('#1d262b', 0.0), roughness: 0.05, metalness: 0.1,
     transparent: true, opacity: 0.88, envMapIntensity: 2.0,
   });
-  M.interior = STD({ color: 0x14161a, roughness: 1.0 });
+  // Recesses / openings. Not pure black: a real opening under a soffit still
+  // shows warm bounce light on the inner reveals, and a literal 0x14 black reads
+  // on screen as a hole punched out of the render.
+  M.interior = STD({ color: 0x2b2822, roughness: 1.0, envMapIntensity: 0.25 });
+  M.interiorWarm = STD({ color: 0x4a4038, roughness: 0.95, envMapIntensity: 0.3 });
 
   /* ------------------------------------------------------------ vegetation */
   M.leafNear = new THREE.MeshStandardMaterial({

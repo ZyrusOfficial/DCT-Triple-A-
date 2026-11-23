@@ -173,22 +173,25 @@ export class TreeKit {
     boot.translate(px, py, pz);
     this.trunkGeos.push(boot);
 
-    const nF = 12 + Math.floor(r() * 5);
+    // Live crown: fronds radiate at slightly different pitches for a natural
+    // ragged silhouette.
+    const nF = 15 + Math.floor(r() * 5);
     for (let i = 0; i < nF; i++) {
-      const a = (i / nF) * Math.PI * 2 + r() * 0.25;
-      const tilt = 0.55 + r() * 0.8;
+      const yaw = (i / nF) * Math.PI * 2 + r() * 0.3;
+      const pitch = (r() - 0.35) * 0.42;       // launch angle variation
       this.cards.frond.push({
-        p: [px, py - 0.15, pz],
-        rot: [a, tilt - 1.1, (r() - 0.5) * 0.25],
-        s: (H / 9) * (0.85 + r() * 0.35),
+        p: [px, py - 0.1, pz],
+        rot: [pitch, yaw, (r() - 0.5) * 0.18],
+        s: (H / 9) * (0.9 + r() * 0.3),
       });
     }
-    // dead fronds hanging below
-    for (let i = 0; i < 4; i++) {
+    // A few dead fronds hanging down the trunk — very characteristic of coconut.
+    for (let i = 0; i < 5; i++) {
+      const yaw = r() * Math.PI * 2;
       this.cards.frond.push({
-        p: [px, py - 0.5, pz],
-        rot: [r() * 6.28, 1.35, 0],
-        s: (H / 9) * 0.7,
+        p: [px, py - 0.45, pz],
+        rot: [-1.15, yaw, 0],
+        s: (H / 9) * 0.66,
       });
     }
     return {
@@ -225,8 +228,10 @@ export class TreeKit {
 
     // cards → InstancedMesh per species
     const cardGeo = new THREE.PlaneGeometry(1, 1);
-    const frondGeo = new THREE.PlaneGeometry(2.0, 3.2);
-    frondGeo.translate(0, 1.55, 0);
+    // A frond is a *curved* strip: 6 segments along its length, each rotated a
+    // little further down, so the crown reads as a drooping palm instead of a
+    // flat orange disc from below.
+    const frondGeo = buildCurvedFrond(2.1, 3.6, 6);
     const mats = { near: M.leafNear, mid: M.leafMid, dark: M.leafDark, frond: M.frond };
     for (const [kind, list] of Object.entries(this.cards)) {
       if (!list.length) continue;
@@ -243,7 +248,7 @@ export class TreeKit {
         // fronds are authored as a 1.9 × 3.6 plane anchored at the base, so
         // they need to be scaled differently from square crown cards
         if (kind === 'frond') {
-          e.set(c.rot[1], c.rot[0], c.rot[2], 'YXZ');
+          e.set(c.rot[0], c.rot[1], c.rot[2], 'YXZ');
           q.setFromEuler(e);
           v.set(c.p[0], c.p[1], c.p[2]);
           sc.set(c.s, c.s, c.s);
@@ -262,6 +267,49 @@ export class TreeKit {
     }
     return out;
   }
+}
+
+/**
+ * A palm frond as a drooping ribbon.
+ *
+ * Authored so the frond extends along +Z from the origin and arcs DOWNWARD in
+ * +Y (i.e. it starts pointing slightly up, then bends over). The card instance
+ * then yaws it around the crown and pitches it to the launch angle, which is
+ * what produces a proper radial crown instead of a stack of flat discs.
+ */
+function buildCurvedFrond(width, length, segs) {
+  const pos = [];
+  const uv = [];
+  const pts = [];
+  let z = 0, y = 0;
+  let ang = 0.55;                    // launch angle above horizontal
+  const stepLen = length / segs;
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    // width: narrow at the boot, widest around 40 %, tapering to a point
+    const w = width * (0.22 + Math.sin(Math.min(t * 1.25, 1) * Math.PI) * 0.95) * (1 - t * 0.62);
+    pts.push({ z, y, w, t });
+    z += Math.cos(ang) * stepLen;
+    y += Math.sin(ang) * stepLen;
+    // bend progressively further down — the tip turns past horizontal
+    ang -= 0.16 + t * 0.36;
+  }
+  for (let i = 0; i < segs; i++) {
+    const a = pts[i], b = pts[i + 1];
+    pos.push(
+      -a.w / 2, a.y, a.z, a.w / 2, a.y, a.z, b.w / 2, b.y, b.z,
+      -a.w / 2, a.y, a.z, b.w / 2, b.y, b.z, -b.w / 2, b.y, b.z,
+    );
+    uv.push(
+      0, a.t, 1, a.t, 1, b.t,
+      0, a.t, 1, b.t, 0, b.t,
+    );
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
 }
 
 function mergeList(geos) {

@@ -52,8 +52,8 @@ export function buildTerrain(parent, M) {
 
       // Distance darkening from the town centre hides tiling at the horizon.
       const dist = Math.hypot(wx + 20, wz + 40);
-      const fade = Math.min(1, dist / 900);
-      const haze = 0.30 + fade * 0.42;
+      const fade = Math.min(1, Math.max(0, (dist - 180) / 1000));
+      const haze = 0.06 + fade * 0.62;
       r = r * (1 - haze) + 150 * haze;
       gg = gg * (1 - haze) + 165 * haze;
       bb = bb * (1 - haze) + 160 * haze;
@@ -101,17 +101,21 @@ export function buildTerrain(parent, M) {
     }
     x.stroke();
   };
-  const roadCol = 'rgba(168,158,140,0.85)';
-  for (let i = 0; i < 22; i++) {
-    const a = (i / 22) * Math.PI * 2 + r0() * 0.2;
-    drawRoad2(Math.cos(a) * 60 - 20, Math.sin(a) * 60 - 40,
-              Math.cos(a) * 1000 - 20, Math.sin(a) * 1000 - 40,
-              5.5 + r0() * 3, roadCol);
+  // Only a handful of real radial roads, drawn dim and narrow — a dozen bright
+  // bands radiating from town reads as sunbeams, not streets.
+  x.globalAlpha = 0.55;
+  const roadCol = 'rgba(150,142,126,0.9)';
+  const angles = [0.18, 0.72, 1.33, 1.95, 2.55, 3.05, 3.62, 4.15, 4.78, 5.42, 5.95];
+  for (const a of angles) {
+    drawRoad2(Math.cos(a) * 70 - 20, Math.sin(a) * 70 - 40,
+              Math.cos(a) * 1050 - 20, Math.sin(a) * 1050 - 40,
+              4.0 + r0() * 2.0, roadCol);
   }
+  x.globalAlpha = 1;
   // field boundary lines (rice paddies read as fine lines)
-  x.strokeStyle = 'rgba(96,110,72,0.28)';
-  x.lineWidth = 1.4;
-  for (let i = 0; i < 220; i++) {
+  x.strokeStyle = 'rgba(88,102,66,0.16)';
+  x.lineWidth = 1.1;
+  for (let i = 0; i < 150; i++) {
     const a = r0() * Math.PI * 2, rad = 260 + r0() * 700;
     const [px, pz] = toPx(Math.cos(a) * rad - 20, Math.sin(a) * rad - 40);
     const w = 20 + r0() * 90, h = 14 + r0() * 60;
@@ -160,22 +164,33 @@ export function buildTerrain(parent, M) {
   // atmospheric haze dominates at this distance; still receiving sun helps.
   const hillGroup = new THREE.Group();
   const hills = [
-    [-1250, -560, 900, 150, 620],
-    [-980, 340, 700, 112, 520],
-    [-620, -1150, 760, 132, 560],
-    [-1500, 480, 820, 120, 600],
-    [900, -1250, 980, 140, 700],
-    [1350, -300, 860, 118, 640],
-    [1180, 850, 900, 128, 660],
-    [-300, 1350, 1000, 116, 700],
-    [-1350, -1250, 900, 140, 680],
+    [-1500, -720, 1050, 118, 760],
+    [-1180, 520, 820, 92, 640],
+    [-780, -1420, 900, 104, 680],
+    [-1850, 640, 980, 98, 720],
+    [1100, -1520, 1120, 112, 820],
+    [1650, -380, 1000, 96, 760],
+    [1420, 1050, 1060, 104, 780],
+    [-380, 1680, 1180, 94, 840],
+    [-1650, -1500, 1080, 112, 800],
+    [300, -1900, 1200, 88, 880],
   ];
-  const hm = new THREE.MeshStandardMaterial({ color: 0x415a48, roughness: 1.0, fog: true });
+  // Distance-graded colours: near ridges read green, the farthest dissolve
+  // into the same blue-grey as the sky horizon. This is what makes a horizon
+  // look real instead of like cut-out cardboard.
+  const hillMats = [
+    new THREE.MeshStandardMaterial({ color: 0x3d5744, roughness: 1.0 }),
+    new THREE.MeshStandardMaterial({ color: 0x4d6a5c, roughness: 1.0 }),
+    new THREE.MeshStandardMaterial({ color: 0x667f80, roughness: 1.0 }),
+    new THREE.MeshStandardMaterial({ color: 0x8797a0, roughness: 1.0 }),
+  ];
   for (const [hx, hz, w, h, d] of hills) {
-    const hg = new THREE.SphereGeometry(1, 26, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-    hg.scale(w, h, d);
-    const m = new THREE.Mesh(hg, hm);
-    m.position.set(hx, -2, hz);
+    const dist = Math.hypot(hx, hz);
+    const idx = dist > 1400 ? 3 : dist > 1100 ? 2 : dist > 850 ? 1 : 0;
+    const hg = new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    hg.scale(w, h * (0.55 + Math.random() * 0.2), d);
+    const m = new THREE.Mesh(hg, hillMats[idx]);
+    m.position.set(hx, -h * 0.12, hz);
     m.matrixAutoUpdate = false;
     m.updateMatrix();
     hillGroup.add(m);

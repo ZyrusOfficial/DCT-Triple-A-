@@ -64,7 +64,23 @@ void main() {
   gl_Position.z = gl_Position.w; // push to far plane
 }`;
 
-const SKY_FRAG = /* glsl */`
+/**
+ * Sky dome shading.
+ *
+ * An analytic approximation rather than a full Rayleigh/Mie integration (which
+ * needs a LUT — too much for an iGPU at 1080p), but built the way real
+ * scattering behaves, which is what stops it reading as a painted gradient:
+ *
+ *   • Rayleigh body: blue overhead, whiter toward the horizon.
+ *   • Mie halo: TWO lobes — a wide soft wash plus a narrow bright aureole. A
+ *     single lobe is what makes cheap skies look like they have a stamped-on
+ *     circle.
+ *   • The disc is limb-darkened (a real photosphere is dimmer at its edge) and
+ *     is anti-aliased in ANGULAR units so it stays round at any FOV.
+ *   • All output is linear HDR well above 1.0 where the sun is; the tone mapper
+ *     in post.js blows it out on purpose, exactly like a camera.
+ */
+const SKY_FRAG = /* glsl */ `
 precision highp float;
 varying vec3 vDir;
 uniform vec3 uSunDir;
@@ -73,46 +89,47 @@ uniform vec3 uHorizon;
 uniform vec3 uGround;
 uniform vec3 uSunColor;
 uniform float uHaze;
-uniform float uSunSize;
 uniform float uNight;
-varying vec3 vWorld;
+uniform float uSunAngRadius;
 
-// Cheap atmospheric scattering approximation (Preetham-inspired ramp).
 void main() {
   vec3 d = normalize(vDir);
   float h = clamp(d.y, -1.0, 1.0);
+  float cosSun = clamp(dot(d, uSunDir), -1.0, 1.0);
 
-  // Sky gradient: zenith -> horizon, with a warm band near the sun.
-  float t = pow(clamp(1.0 - h, 0.0, 1.0), 2.4);
+  // ---- Rayleigh body -------------------------------------------------------
+  float t = pow(clamp(1.0 - h, 0.0, 1.0), 2.6);
   vec3 col = mix(uZenith, uHorizon, t);
 
-  // Sun-relative glow near the horizon (forward scattering).
-  float cosSun = max(dot(d, uSunDir), 0.0);
-  float forward = pow(cosSun, 4.0) * uHaze;
-  float tight = pow(cosSun, 220.0);
-  col += uSunColor * forward * 0.55;
-  col += uSunColor * tight * 1.4;
+  // Extra whitening in the last few degrees above the horizon.
+  col = mix(col, uHorizon * 1.06, pow(clamp(1.0 - h, 0.0, 1.0), 9.0) * 0.7);
 
-  // Sun disc.
-  float disc = smoothstep(1.0 - uSunSize, 1.0 - uSunSize * 0.45, cosSun);
-  col += uSunColor * disc * 14.0 * (1.0 - uNight);
+  // ---- Mie halo: wide wash + narrow aureole --------------------------------
+  float wide = pow(max(cosSun, 0.0), 5.0);
+  float tight = pow(max(cosSun, 0.0), 260.0);
+  col += uSunColor * wide * 0.40 * uHaze;
+  col += uSunColor * tight * 2.2;
 
-  // Below horizon: ground haze, never pure black.
-  float below = smoothstep(0.0, -0.16, h);
+  // ---- Solar disc ----------------------------------------------------------
+  float ang = acos(cosSun);
+  float r = ang / max(uSunAngRadius, 1e-6);
+  float limb = mix(0.55, 1.0, sqrt(max(0.0, 1.0 - min(r * r, 1.0))));
+  float disc = (1.0 - smoothstep(0.86, 1.0, r)) * limb;
+  col += uSunColor * disc * 42.0 * (1.0 - uNight);
+
+  // ---- Below the horizon ---------------------------------------------------
+  float below = smoothstep(0.0, -0.10, h);
   col = mix(col, uGround, below);
 
-  // Moon-ish zenith at night, faint stars.
+  // ---- Night ---------------------------------------------------------------
   if (uNight > 0.01) {
     float st = fract(sin(dot(floor(d.xz * 900.0), vec2(12.9898, 78.233))) * 43758.5453);
     float star = step(0.9975, st) * smoothstep(0.02, 0.3, h);
     col += vec3(0.85, 0.9, 1.0) * star * 0.9 * uNight;
   }
 
-  // Dither to kill banding in the gradient (very visible on 8-bit displays).
   float dither = (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
-  col += dither;
-
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(max(col, 0.0) + dither, 1.0);
 }`;
 
 export class SkySystem {
@@ -127,7 +144,7 @@ export class SkySystem {
       uGround: { value: new THREE.Color(0x6e7c74) },
       uSunColor: { value: new THREE.Color(0xfff0d8) },
       uHaze: { value: 0.34 },
-      uSunSize: { value: 0.0009 },
+      uSunAngRadius: { value: 0.0092 },
       uNight: { value: 0.0 },
     };
 
@@ -167,11 +184,13 @@ export class SkySystem {
     // Fill light standing in for the bright sky bounce off concrete + grass.
     // Kept low: the PMREM environment already carries most of the ambient, and
     // stacking the two is what flattens an image.
-    this.fill = new THREE.HemisphereLight(0xc6dcf2, 0x8e8c7a, 0.18);
+    // Sky/ground fill. This is what stands in for global illumination, so it
+    // has to be strong enough that a surface in shade still shows its albedo.
+    this.fill = new THREE.HemisphereLight(0xcfe3f7, 0xa39684, 1.05);
     scene.add(this.fill);
 
     // Tiny ambient so deep interiors never go fully black.
-    this.ambient = new THREE.AmbientLight(0x9db4c8, 0.04);
+    this.ambient = new THREE.AmbientLight(0xa8bfd4, 0.16);
     scene.add(this.ambient);
 
     // Env map (PMREM from a small render of the sky).
@@ -229,10 +248,19 @@ export class SkySystem {
     this.uniforms.uNight.value = this.night;
 
     // Fill light follows the sky.
-    this.fill.intensity = 0.06 + day * 0.20;
-    this.fill.color.copy(new THREE.Color(0x22304a).lerp(new THREE.Color(0xc6dcf2), day));
-    this.fill.groundColor.copy(new THREE.Color(0x14161a).lerp(new THREE.Color(0x7e7d6c), day));
-    this.ambient.intensity = 0.02 + day * 0.035;
+    /**
+     * Sky/ground fill — this is the stand-in for global illumination.
+     *
+     * It must be strong enough that a surface in shadow still reads its albedo.
+     * These were previously set to 0.06 + 0.20·day, which crushed every shaded
+     * face to pure black and made porches, arcades and north walls look like
+     * holes punched in the render. Shadowed concrete outdoors is roughly a fifth
+     * of sunlit concrete, not a hundredth.
+     */
+    this.fill.intensity = 0.30 + day * 0.85;
+    this.fill.color.copy(new THREE.Color(0x2a3a58).lerp(new THREE.Color(0xcfe3f7), day));
+    this.fill.groundColor.copy(new THREE.Color(0x22201c).lerp(new THREE.Color(0xa39684), day));
+    this.ambient.intensity = 0.05 + day * 0.14;
 
     // Shadow strength: hard at noon, softer at golden hour.
     this.sun.shadow.radius = 1.2 + (1 - golden) * 2.4;
@@ -254,7 +282,7 @@ export class SkySystem {
     if (this.envRT) this.envRT.dispose();
     this.envRT = this.pmrem.fromScene(this.envScene, 0.04, 1, 400);
     this.scene.environment = this.envRT.texture;
-    this.scene.environmentIntensity = 0.9;
+    this.scene.environmentIntensity = 1.35;
   }
 
   setShadowQuality(level) {

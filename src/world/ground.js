@@ -130,9 +130,12 @@ export function buildGround(parent, M) {
   const px0 = P.cx - P.halfX, px1 = P.cx + P.halfX;
   const pz0 = P.cz - P.halfZ, pz1 = P.cz + P.halfZ;
   b.addGeo(rect(px0, pz0, px1, pz1, 0.055, TEXSCALE.grass), 'grass');
-  // Cross paths meeting at the fountain
+  // Cross paths meeting at the fountain. The E–W promenade is deliberately
+  // wide: it is the sightline from MacArthur Highway to the shrine façade.
   b.addGeo(rect(P.cx - 2.6, pz0, P.cx + 2.6, pz1, 0.085, 3.2), 'paving');
-  b.addGeo(rect(px0, P.cz - 2.6, px1, P.cz + 2.6, 0.085, 3.2), 'paving');
+  b.addGeo(rect(px0, P.cz - 3.4, px1, P.cz + 3.4, 0.085, 3.2), 'paving');
+  // paved link from the park across to the shrine forecourt
+  b.addGeo(rect(px0 - 26, P.cz - 3.4, px0, P.cz + 3.4, 0.086, 3.2), 'paving');
   // Central circular plaza
   b.addGeo(disc(P.cx, P.cz, 10.0, 0.09, 2.8), 'paving');
   b.addGeo(ringGeo(P.cx, P.cz, 10.0, 11.3, 0.095, 2.0), 'concreteTrim');

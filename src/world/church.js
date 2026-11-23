@@ -47,11 +47,20 @@ export const CHURCH = {
   porchH: 8.4,
   // Bell tower: free-standing at the south-east corner of the forecourt,
   // exactly as in the photos (tower on the right when facing the façade).
-  tower: { x: 15.5, z: 21.0 },
+  /**
+   * Bell tower placement, in the church's LOCAL frame.
+   *
+   * Local +Z is the façade direction (toward the plaza, world +X after the
+   * +π/2 yaw). Local +X maps to world −Z, i.e. SOUTH. In the photographs the
+   * campanile stands on the LEFT as you face the church from the plaza, which
+   * is on the façade side and toward the south — so local (+x, +z).
+   */
+  tower: { x: 10.5, z: 15.5 },
 };
 
 export function buildChurch(parent, M, { nightMode = false } = {}) {
   const b = new Builder('church');
+  const churchLights = [];
   const { naveW: NW, naveL: NL, wallH: WH } = CHURCH;
 
   /* ============================================================ NAVE BODY */
@@ -123,7 +132,29 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     b.add(box(NW * 0.90, 0.42, 0.55, 2), 'churchTrim', { pos: [0, WH - 0.1, -NL / 2 - 0.35] });
   }
 
-  // Floor slab & interior floor
+  /**
+   * The shrine stands ~1.1 m above the plaza on a broad stone platform, with a
+   * flight of steps across the whole façade — this is what makes it read as the
+   * dominant building in the photographs rather than a shed at ground level.
+   */
+  const PLINTH = 1.15;
+  // bp = "plinth builder": stays at grade, so it lives outside the lifted group.
+  const bp = new Builder('church-plinth');
+  bp.add(box(NW + 9.0, PLINTH, NL + 12.0, TEXSCALE.concrete), 'concreteTrim',
+    { pos: [0, PLINTH / 2, -1.0], collide: true });
+  bp.add(box(NW + 8.6, 0.05, NL + 11.6, TEXSCALE.paving), 'pavingRed',
+    { pos: [0, PLINTH + 0.025, -1.0] });
+  // Grand steps across the façade, descending to the forecourt
+  for (let i = 0; i < 4; i++) {
+    bp.add(box(NW + 8.2, 0.29, 0.72, TEXSCALE.paving), 'concreteTrim', {
+      pos: [0, 0.145 + i * 0.29, NL / 2 + 6.0 - i * 0.72],
+    });
+  }
+  for (const sx of [-1, 1]) {
+    bp.add(box(0.75, 1.3, 3.6, 2), 'concreteTrim',
+      { pos: [sx * (NW / 2 + 4.5), 0.65, NL / 2 + 4.4], collide: true });
+  }
+  // Floor slab & interior floor (authored at grade; the group offset lifts it)
   b.add(box(NW + 1.2, 0.5, NL + 0.8, TEXSCALE.concrete), 'concreteDark', { pos: [0, 0.25, 0], collide: true });
   b.add(box(NW - 1.0, 0.1, NL - 1.0, TEXSCALE.paving), 'tileCream', { pos: [0, 0.52, 0] });
   b.add(box(NW * 0.7, 0.1, 5.2, TEXSCALE.paving), 'tileCream', { pos: [0, 0.52, -NL / 2 - 1.6] });
@@ -231,81 +262,149 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
   }
 
   /* --------------------------------------------------------------- PORTICO */
+  /**
+   * Reading the reference elevation:
+   *   • The porch is nearly as wide as the church and only ~6 m deep.
+   *   • It is carried on SIX heavy round columns (Ø ≈ 0.95 m) standing on
+   *     square plinths, standing clear of the façade so there is a proper
+   *     dark walkway behind them.
+   *   • A deep flat slab roof with a bold white fascia band, and the parish
+   *     name in spaced dark letters across that band.
+   *   • Three shallow steps run the full width, with cheek walls.
+   */
   {
-    const PZ = facadeZ + CHURCH.porchD / 2;
-    const PW = CHURCH.porchW, PD = CHURCH.porchD, PH = CHURCH.porchH;
-    // Slab roof with a slight fascia
-    b.add(box(PW, 0.55, PD, 2), 'churchTrim', { pos: [0, PH, PZ] });
-    b.add(box(PW + 0.5, 0.22, PD + 0.5, 2), 'churchTrim', { pos: [0, PH + 0.36, PZ] });
-    // Roof deck hidden behind a low parapet
-    b.add(box(PW + 0.5, 0.5, 0.16, 2), 'churchTrim', { pos: [0, PH + 0.66, PZ + PD / 2 + 0.17] });
-    // Fascia band that carries the lettering
-    b.add(box(PW + 0.6, 0.9, 0.24, 2), 'churchWall', { pos: [0, PH - 0.6, PZ + PD / 2 + 0.03] });
+    const PW = NW + 5.0;          // porch slightly wider than the nave
+    const PD = 6.6;               // depth
+    const PH = 8.0;               // underside of the slab
+    const PZ = facadeZ + PD / 2;  // centre of the porch
+    const colR = 0.48;
+
+    // Slab + fascia
+    b.add(box(PW, 0.62, PD, 2), 'churchTrim', { pos: [0, PH + 0.31, PZ] });
+    b.add(box(PW + 0.7, 0.26, PD + 0.7, 2), 'churchTrim', { pos: [0, PH + 0.75, PZ] });
+    // Bold fascia band that carries the lettering
+    b.add(box(PW + 0.5, 1.05, 0.3, 2), 'churchWall', { pos: [0, PH - 0.3, PZ + PD / 2 - 0.05] });
+    // Thin white cornice above and below the band
+    b.add(box(PW + 0.8, 0.12, 0.42, 2), 'churchTrim', { pos: [0, PH + 0.24, PZ + PD / 2 + 0.02] });
+    b.add(box(PW + 0.8, 0.12, 0.42, 2), 'churchTrim', { pos: [0, PH - 0.86, PZ + PD / 2 + 0.02] });
 
     // Lettering
     {
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(PW * 0.86, 0.72), M.signChurch);
-      sign.position.set(0, PH - 0.62, PZ + PD / 2 + 0.18);
-      sign.castShadow = false;
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(PW * 0.9, 0.82), M.signChurch);
+      sign.position.set(0, PH - 0.3, PZ + PD / 2 + 0.18);
       b.addSign(sign);
     }
 
-    // Columns: 6 across the front edge
-    const colX = [-10.4, -6.2, -2.1, 2.1, 6.2, 10.4];
+    // Six columns across the front, standing on plinths
+    const colX = [-10.3, -6.2, -2.1, 2.1, 6.2, 10.3];
+    const cz = PZ + PD / 2 - 0.75;
     for (const x of colX) {
-      const parts = column(0.46, PH - 0.7, { key: 'churchTrim', baseH: 0.32, capH: 0.3, segments: 16 });
-      for (const p of parts) b.addGeo(p.geo.clone().translate(x, 0, PZ + PD / 2 - 0.55), p.key);
-      b.addCollider([x - 0.55, 0, PZ + PD / 2 - 1.1], [x + 0.55, PH, PZ + PD / 2 - 0.0]);
-    }
-    // Side columns at the porch corners, one bay back
-    for (const x of [-PW / 2 + 0.6, PW / 2 - 0.6]) {
-      const parts = column(0.42, PH - 0.7, { key: 'churchTrim', baseH: 0.3, capH: 0.28, segments: 14 });
-      for (const p of parts) b.addGeo(p.geo.clone().translate(x, 0, PZ - 1.2), p.key);
+      // plinth
+      b.add(box(1.16, 0.42, 1.16, 1.6), 'churchTrim', { pos: [x, 0.21, cz] });
+      // shaft (slightly tapered, as in the photo)
+      b.add(cylinder(colR * 0.93, colR, PH - 0.95, 20, 1.6), 'churchWall',
+        { pos: [x, 0.42 + (PH - 0.95) / 2, cz] });
+      // base moulding + capital
+      b.add(cylinder(colR * 1.13, colR * 1.22, 0.2, 20, 1.6), 'churchTrim',
+        { pos: [x, 0.52, cz] });
+      b.add(box(colR * 2.3, 0.2, colR * 2.3, 1.6), 'churchTrim',
+        { pos: [x, PH - 0.62, cz] });
+      b.add(cylinder(colR * 1.16, colR * 1.0, 0.18, 20, 1.6), 'churchTrim',
+        { pos: [x, PH - 0.44, cz] });
+      b.addCollider([x - 0.62, 0, cz - 0.62], [x + 0.62, PH, cz + 0.62]);
     }
 
-    // Entrance steps (three risers) across the full porch width
+    /**
+     * Porch open sides. These must NOT be solid walls: a solid slab turns the
+     * portico into a box and the result is a black hole from every angle except
+     * straight on. In the reference the porch is open — a colonnade of three
+     * arches each side. We build a solid head wall with three round-arched
+     * openings punched through it.
+     */
+    for (const sx of [-1, 1]) {
+      const wallX = sx * (PW / 2 - 0.18);
+      const headY = PH - 0.9;          // springing height of the arches
+      // spandrel / head beam above the arches
+      b.add(box(0.44, 0.95, PD - 0.5, 2), 'churchWall',
+        { pos: [wallX, PH - 0.45, PZ] });
+      // piers between the arches
+      for (const zz of [PZ - PD / 2 + 0.3, PZ - PD / 6, PZ + PD / 6, PZ + PD / 2 - 0.3]) {
+        b.add(box(0.44, headY - 0.55, 0.5, 2), 'churchWall',
+          { pos: [wallX, 0.55 + (headY - 0.55) / 2, zz], collide: true });
+      }
+      // arch heads (half discs), one per bay
+      for (const zz of [PZ - PD / 3, PZ, PZ + PD / 3]) {
+        put(b, halfDisc(0.86, 14), 'churchWall', [wallX, headY - 0.55, zz],
+          { yaw: sx * Math.PI / 2 });
+      }
+      // low balustrade across each opening
+      b.add(box(0.3, 0.5, PD - 0.9, 2), 'churchTrim',
+        { pos: [wallX, 0.25, PZ], collide: true });
+    }
+
+    // Floor: raised slab with a tiled surface
+    b.add(box(PW, 0.5, PD + 0.4, 2), 'churchTrim', { pos: [0, 0.25, PZ] });
+    b.add(box(PW - 0.5, 0.06, PD, TEXSCALE.paving), 'tileCream', { pos: [0, 0.53, PZ] });
+
+    // Three steps down to the forecourt
     for (let i = 0; i < 3; i++) {
-      b.add(box(PW + 1.4, 0.16, 0.42, TEXSCALE.paving), 'paving', {
-        pos: [0, 0.08 + i * 0.16, PZ + PD / 2 + 1.35 - i * 0.42],
+      b.add(box(PW + 1.6, 0.17, 0.5, TEXSCALE.paving), 'paving', {
+        pos: [0, 0.085 + i * 0.17, PZ + PD / 2 + 1.35 - i * 0.5],
       });
     }
-    b.add(box(PW + 1.6, 0.2, 1.9, TEXSCALE.paving), 'paving', { pos: [0, 0.1, PZ + PD / 2 + 2.1] });
-
-    // Porch floor
-    b.add(box(PW, 0.12, PD, TEXSCALE.paving), 'paving', { pos: [0, 0.56, PZ] });
-    // Dark timber soffit (very visible from below in the references)
-    b.add(box(PW - 0.3, 0.06, PD - 0.3, 1), 'woodDark', { pos: [0, PH - 0.3, PZ] });
-    for (let i = -5; i <= 5; i++) {
-      b.add(box(PW - 0.4, 0.14, 0.14, 1), 'woodDark', { pos: [0, PH - 0.36, PZ + i * 0.78] });
+    // cheek walls either side of the steps
+    for (const sx of [-1, 1]) {
+      b.add(box(0.45, 0.62, 1.9, 2), 'churchTrim',
+        { pos: [sx * (PW / 2 + 0.75), 0.31, PZ + PD / 2 + 0.85], collide: true });
     }
 
-    // Main door (double leaf, dark timber with carved panels)
+    /**
+     * Soffit. In reality this is a deep brown timber ceiling that receives a lot
+     * of bounced light from the white forecourt — so it must NOT read as a black
+     * hole. We use the paler timber plus a dedicated warm fill light underneath.
+     */
+    b.add(box(PW - 0.4, 0.09, PD - 0.4, 1.4), 'woodSoffit', { pos: [0, PH - 0.52, PZ] });
+    for (let i = -3; i <= 3; i++) {
+      b.add(box(PW - 0.5, 0.2, 0.2, 1.4), 'woodSoffit', { pos: [0, PH - 0.6, PZ + i * 0.9] });
+    }
+    for (const sx of [-1, 1]) {
+      b.add(box(0.24, 0.24, PD - 0.4, 1.4), 'woodSoffit', { pos: [sx * (PW / 2 - 0.45), PH - 0.62, PZ] });
+    }
+    // Bright painted coffer panels between the beams catch the bounce.
+    for (let i = -3; i < 3; i++) {
+      b.add(box(PW - 1.0, 0.06, 0.66, 1), 'soffitPanel',
+        { pos: [0, PH - 0.47, PZ + i * 0.9 + 0.45] });
+    }
+    // A soft warm point light so the porch interior is legible at any sun angle.
+    const pl = new THREE.PointLight(0xfff2dc, 26.0, 26, 1.7);
+    pl.position.set(0, PH - 1.5, PZ - 0.4);
+    churchLights.push(pl);
+
+    /* ---------------- main door: double leaf, dark timber, carved panels ---- */
     {
-      const dz = facadeZ + 0.35;
-      b.add(box(3.5, 0.18, 0.9, 1), 'churchTrim', { pos: [0, 5.0, facadeZ + 0.18] });
+      const dz = facadeZ + 0.44;
+      // arched reveal
+      b.add(box(4.2, 0.5, 0.95, 1.5), 'churchTrim', { pos: [0, 5.15, facadeZ + 0.34] });
       for (const s of [-1, 1]) {
-        b.add(box(1.62, 4.5, 0.13, 1.2), 'woodDark', { pos: [s * 0.86, 2.4, dz], collide: true });
-        // carved upper panel
-        b.add(box(1.1, 1.7, 0.05, 1), 'wood', { pos: [s * 0.86, 3.6, dz + 0.1] });
-        b.add(box(0.9, 1.5, 0.04, 1), 'wood', { pos: [s * 0.86, 1.6, dz + 0.1] });
-        // handle
-        b.add(cylinder(0.045, 0.045, 0.55, 6), 'brass', { pos: [s * 0.24, 2.3, dz + 0.16] });
+        b.add(box(0.34, 5.0, 0.95, 1.5), 'churchTrim', { pos: [s * 1.95, 2.5, facadeZ + 0.34] });
+        // leaf
+        b.add(box(1.72, 4.6, 0.16, 1.2), 'woodDark', { pos: [s * 0.9, 2.35, dz], collide: true });
+        // carved panels
+        b.add(box(1.16, 1.75, 0.06, 1), 'wood', { pos: [s * 0.9, 3.55, dz + 0.11] });
+        b.add(box(1.16, 1.35, 0.06, 1), 'wood', { pos: [s * 0.9, 1.5, dz + 0.11] });
+        b.add(cylinder(0.045, 0.045, 0.6, 6), 'brass', { pos: [s * 0.26, 2.35, dz + 0.18] });
       }
-      // Transom light above the door
-      b.add(box(3.2, 0.55, 0.1, 1), nightMode ? 'glassLit' : 'glass', { pos: [0, 4.85, dz + 0.02] });
-      // Frame
-      b.add(box(3.75, 0.2, 0.34, 1), 'churchTrim', { pos: [0, 0.1, dz] });
-      for (const s of [-1, 1]) b.add(box(0.22, 4.9, 0.34, 1), 'churchTrim', { pos: [s * 1.86, 2.5, dz] });
+      // transom light
+      b.add(box(3.3, 0.6, 0.12, 1), nightMode ? 'glassLit' : 'glass', { pos: [0, 4.9, dz + 0.02] });
     }
 
-    // Two side doors, simpler
+    /* --------------------------- two side doors, simpler ------------------ */
     for (const s of [-1, 1]) {
-      const dz = facadeZ + 0.35;
-      b.add(box(1.9, 3.8, 0.12, 1.2), 'woodDark', { pos: [s * 6.4, 1.95, dz], collide: true });
-      b.add(box(2.1, 0.18, 0.3, 1), 'churchTrim', { pos: [s * 6.4, 3.9, dz + 0.02] });
-      // Lamp over each side door
-      b.add(cylinder(0.06, 0.06, 0.5, 6), 'ironDark', { pos: [s * 6.4, 4.4, dz + 0.3] });
-      b.add(box(0.24, 0.3, 0.24, 1), nightMode ? 'lampGlow' : 'glassDark', { pos: [s * 6.4, 4.15, dz + 0.3] });
+      const dz = facadeZ + 0.42;
+      const dx = s * (NW / 2 - 2.4);
+      b.add(box(2.1, 4.0, 0.14, 1.2), 'woodDark', { pos: [dx, 2.05, dz], collide: true });
+      b.add(box(2.35, 0.22, 0.42, 1.5), 'churchTrim', { pos: [dx, 4.1, dz + 0.05] });
+      for (const q of [-1, 1]) b.add(box(0.2, 4.0, 0.42, 1.5), 'churchTrim', { pos: [dx + q * 1.15, 2.05, dz + 0.05] });
     }
   }
 
@@ -354,12 +453,22 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     b.add(box(3.1, 0.2, 1.9, 1.5), 'soil', { pos: [px, 0.6, pz] });
   }
 
-  // Roof over the nave: a long low gable with clay-red ribbed sheet
+  /**
+   * Roof over the nave.
+   *
+   * gableRoof() authors a roof whose ridge runs along local X, with the two
+   * slopes falling toward ±Z, and it is centred on the origin. The nave here
+   * runs along local Z, so the finished geometry is yawed 90° — after which the
+   * ridge runs along Z (correct) and the slopes fall toward ±X (correct).
+   *
+   * The gable-end infill is a triangle extruded along +Z; ExtrudeGeometry puts
+   * its profile on z = 0..depth, and the triangle's apex must reach the ridge,
+   * so the infill is authored in the ROOF's frame and yawed with it rather than
+   * being placed by hand at ±NL/2 (which is what put a slab through the nave).
+   */
   {
-    // gableRoof() puts the ridge along local X; the nave runs along local Z,
-    // so rotate the finished roof 90°. gableRoof's `w` therefore becomes the
-    // nave length and its `d` the nave width.
-    const roofParts = gableRoof(NL + 1.4, NW, 3.6, {
+    const RISE = 3.6;
+    const roofParts = gableRoof(NL + 1.4, NW, RISE, {
       key: 'roofRib', overhang: 0.9, fasciaKey: 'churchTrim', thickness: 0.12,
     });
     for (const p of roofParts) {
@@ -368,22 +477,51 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
       g.translate(0, WH, 0);
       b.addGeo(g, p.key);
     }
-    // Gable-end infill so you can't see into the roof void from the ends.
+
+    /**
+     * Gable-end infill. The nave runs along local Z, so the gable end is a thin
+     * vertical triangular plate spanning X and rising in Y, extruded along +Z.
+     * No yaw is needed — the profile already lies in the correct plane.
+     */
     for (const sg of [-1, 1]) {
       const sh = new THREE.Shape();
-      sh.moveTo(-NW / 2, 0); sh.lineTo(NW / 2, 0); sh.lineTo(0, 3.6); sh.closePath();
-      const gg = new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false });
-      gg.translate(0, WH, sg * (NL / 2) - (sg > 0 ? 0 : 0.3));
-      gg.rotateY(0);
+      sh.moveTo(-NW / 2, 0);
+      sh.lineTo(NW / 2, 0);
+      sh.lineTo(0, RISE);
+      sh.closePath();
+      const gg = new THREE.ExtrudeGeometry(sh, { depth: 0.36, bevelEnabled: false });
+      // ExtrudeGeometry occupies z ∈ [0, depth]; pull it back so it straddles
+      // the nave end wall rather than sitting entirely proud of it.
+      gg.translate(0, WH, sg * (NL / 2) - (sg > 0 ? 0.36 : 0));
       b.addGeo(gg, 'churchWall');
     }
-    // Ceiling / attic darkness inside so no sky leaks
-    b.add(box(NL - 0.4, 0.2, NW - 0.4, 2), 'interior', { pos: [0, WH - 0.2, 0] });
+
+    /**
+     * Attic floor. Its job is only to stop daylight leaking through the roof
+     * void when you look up from inside the nave, so it sits just under the
+     * eaves and is cancelled by the coved ceiling below it. Crucially it must
+     * NOT be visible from outside through the head openings — see the porch
+     * head fills, which are what actually keep the wall opaque.
+     *
+     * X is the nave WIDTH and Z is the nave LENGTH here; swapping them produced
+     * a slab projecting past the church on all four sides.
+     */
+    b.add(box(NW - 0.6, 0.16, NL - 0.6, 2), 'soffitPanel', { pos: [0, WH - 0.28, 0] });
   }
 
   /* ---------------------------------------------------------------- BUILD */
+  // Two groups at the same XZ: the plinth stays at grade, the church body is
+  // lifted onto it. Both share the survey yaw.
+  const plinthGroup = new THREE.Group();
+  plinthGroup.position.set(CHURCH.x, 0, CHURCH.z);
+  plinthGroup.rotation.y = CHURCH.rotY;
+  parent.add(plinthGroup);
+  const pSigns = bp.signs || []; bp.signs = undefined;
+  bp.buildInto(plinthGroup, M);
+  for (const s2 of pSigns) plinthGroup.add(s2);
+
   const group = new THREE.Group();
-  group.position.set(CHURCH.x, 0, CHURCH.z);
+  group.position.set(CHURCH.x, PLINTH, CHURCH.z);
   group.rotation.y = CHURCH.rotY;
   parent.add(group);
 
@@ -392,8 +530,33 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
   b.signs = undefined;
   b.buildInto(group, M);
   for (const s of signs) group.add(s);
+  for (const l of churchLights) group.add(l);
 
-  return { group, builder: b, colliders: b.colliders };
+  // Colliders: the plinth's own colliders are world-space already relative to
+  // the group, so merge and shift both sets into true world space.
+  const colliders = [
+    ...bp.colliders.map((c) => shiftBox(c, CHURCH.x, 0, CHURCH.z, CHURCH.rotY)),
+    ...b.colliders.map((c) => shiftBox(c, CHURCH.x, PLINTH, CHURCH.z, CHURCH.rotY)),
+  ];
+  return { group, plinthGroup, builder: b, colliders, lights: churchLights };
+}
+
+/** Rotate an AABB corners by yaw and translate; returns a new AABB. */
+function shiftBox(c, dx, dy, dz, yaw) {
+  const cs = Math.cos(yaw), sn = Math.sin(yaw);
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const x of [c.min.x, c.max.x]) {
+    for (const y of [c.min.y, c.max.y]) {
+      for (const z of [c.min.z, c.max.z]) {
+        const wx = x * cs + z * sn + dx;
+        const wz = -x * sn + z * cs + dz;
+        const p = new THREE.Vector3(wx, y + dy, wz);
+        min.min(p); max.max(p);
+      }
+    }
+  }
+  return { min, max };
 }
 
 /**
@@ -407,91 +570,155 @@ function halfDisc(r, segments = 14) {
 }
 
 /* ------------------------------------------------------------------------ */
+/**
+ * The detached bell tower (campanile) east of the shrine.
+ *
+ * Reference reading: a tall red-brick shaft on a stone base, with cream string
+ * courses and corner quoins, then an open belfry stage with a round-arched
+ * opening on each face, then a smaller open lantern stage, then an octagonal
+ * drum carrying a small dome and a cross. About 2.2× the nave height.
+ *
+ * Everything here is authored with put() so no geometry is ever rotated after
+ * being translated into world space.
+ */
 function buildBellTower(b, M, tx, tz, nightMode) {
-  const H = 25.0;
-  const baseW = 4.4;
+  const baseW = 4.6;      // brick shaft
+  const shaftH = 11.0;
+  const stageW = 4.1;     // open belfry
+  const upW = 3.4;        // lantern stage
 
-  // -- Base: red brick with cream bands and quoins
-  b.add(box(baseW + 0.5, 0.6, baseW + 0.5, TEXSCALE.brick), 'concreteTrim', { pos: [tx, 0.3, tz], collide: true });
-  b.add(box(baseW, 9.0, baseW, TEXSCALE.brick), 'brick', { pos: [tx, 5.1, tz], collide: true });
-  // cream string courses
-  for (const y of [9.7, 4.6, 1.0]) {
-    b.add(box(baseW + 0.22, 0.36, baseW + 0.22, 2), 'churchTrim', { pos: [tx, y, tz] });
+  /* ------------------------------------------------------------ stone base */
+  b.add(box(baseW + 1.1, 0.75, baseW + 1.1, TEXSCALE.concrete), 'concreteTrim',
+    { pos: [tx, 0.375, tz], collide: true });
+  b.add(box(baseW + 0.75, 0.3, baseW + 0.75, TEXSCALE.concrete), 'concreteDark',
+    { pos: [tx, 0.9, tz] });
+
+  /* ---------------------------------------------------------- brick shaft  */
+  b.add(box(baseW, shaftH, baseW, TEXSCALE.brick), 'brick', { pos: [tx, 1.05 + shaftH / 2, tz], collide: true });
+  // cream string courses — three of them, as in the photos
+  for (const y of [1.35, 6.5, 10.6]) {
+    b.add(box(baseW + 0.26, 0.34, baseW + 0.26, 2.4), 'churchTrim', { pos: [tx, y, tz] });
   }
-  // cream corner pilasters
+  // corner quoins
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    b.add(box(0.5, 9.2, 0.5, 2), 'churchTrim', { pos: [tx + sx * baseW / 2, 5.1, tz + sz * baseW / 2] });
+    b.add(box(0.52, shaftH, 0.52, 2.4), 'churchTrim',
+      { pos: [tx + sx * (baseW / 2 - 0.06), 1.05 + shaftH / 2, tz + sz * (baseW / 2 - 0.06)] });
   }
-  // Tall narrow arched windows on the shaft (front + sides)
+  // Tall round-arched windows on the shaft, one per face
   for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2;
-    put(b, box(0.7, 4.6, 0.14, 1), 'glassDark',
-      [tx + Math.sin(a) * (baseW / 2 + 0.02), 5.4, tz + Math.cos(a) * (baseW / 2 + 0.02)], { yaw: a });
-    put(b, box(0.95, 0.2, 0.3, 1), 'churchTrim',
-      [tx + Math.sin(a) * (baseW / 2 + 0.08), 7.9, tz + Math.cos(a) * (baseW / 2 + 0.08)], { yaw: a });
+    const a = (i * Math.PI) / 2;
+    const dx = Math.sin(a), dz = Math.cos(a);
+    const px = tx + dx * (baseW / 2 - 0.02), pz = tz + dz * (baseW / 2 - 0.02);
+    // recessed glazing
+    put(b, box(1.1, 3.6, 0.1, 1), nightMode ? 'glassLit' : 'glassDark', [px, 5.0, pz], { yaw: a });
+    // arch head
+    const head = halfDisc(0.62, 12);
+    put(b, head, nightMode ? 'glassLit' : 'glassDark', [px, 6.78, pz], { yaw: a });
+    // cream surround
+    put(b, box(1.5, 0.22, 0.22, 2), 'churchTrim', [px, 7.35, pz], { yaw: a });
+    for (const q of [-1, 1]) {
+      put(b, box(0.22, 4.0, 0.22, 2), 'churchTrim',
+        [tx + dx * (baseW / 2 + 0.05) + dz * q * 0.7, 4.9,
+         tz + dz * (baseW / 2 + 0.05) - dx * q * 0.7], { yaw: a });
+    }
+    // sill
+    put(b, box(1.6, 0.16, 0.34, 2), 'churchTrim', [px, 3.1, pz], { yaw: a });
   }
 
-  // -- First open stage: balustraded gallery + arched belfry openings
-  const stageW = 3.9;
-  b.add(box(baseW + 0.7, 0.5, baseW + 0.7, 2), 'churchTrim', { pos: [tx, 9.85, tz] });
-  b.add(box(stageW, 0.4, stageW, TEXSCALE.brick), 'brick', { pos: [tx, 10.3, tz] });
-  // 4 corner piers
+  /* --------------------------------------------------- corbelled gallery  */
+  const galY = 1.05 + shaftH;                     // 12.05
+  b.add(box(baseW + 1.35, 0.34, baseW + 1.35, 2.4), 'churchTrim', { pos: [tx, galY + 0.17, tz] });
+  b.add(box(baseW + 0.95, 0.3, baseW + 0.95, 2.4), 'churchTrim', { pos: [tx, galY + 0.49, tz] });
+  // balustrade: posts + rail
+  const rr = stageW / 2 + 0.55;
+  for (const sx of [-1, 1]) {
+    for (let i = -2; i <= 2; i++) {
+      const o = i * (2 * rr) / 4;
+      b.add(box(0.17, 0.78, 0.17, 1.2), 'churchTrim', { pos: [tx + sx * rr, galY + 1.05, tz + o] });
+      b.add(box(0.17, 0.78, 0.17, 1.2), 'churchTrim', { pos: [tx + o, galY + 1.05, tz + sx * rr] });
+    }
+  }
+  for (const sx of [-1, 1]) {
+    b.add(box(0.3, 0.2, 2 * rr + 0.3, 2), 'churchTrim', { pos: [tx + sx * rr, galY + 1.52, tz] });
+    b.add(box(2 * rr + 0.3, 0.2, 0.3, 2), 'churchTrim', { pos: [tx, galY + 1.52, tz + sx * rr] });
+  }
+
+  /* ------------------------------------------------------- open belfry stage */
+  const belfryY = galY + 0.64;                    // 12.69
+  const belfryH = 4.8;
+  // Four corner piers
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    b.add(box(0.62, 4.6, 0.62, 2), 'churchTrim', { pos: [tx + sx * stageW / 2, 12.8, tz + sz * stageW / 2] });
+    b.add(box(0.85, belfryH, 0.85, 2.4), 'brick',
+      { pos: [tx + sx * (stageW / 2 - 0.42), belfryY + belfryH / 2, tz + sz * (stageW / 2 - 0.42)] });
+    b.add(box(0.99, 0.26, 0.99, 2.4), 'churchTrim',
+      { pos: [tx + sx * (stageW / 2 - 0.42), belfryY + belfryH - 0.5, tz + sz * (stageW / 2 - 0.42)] });
   }
-  // Arched openings (dark, with a bell silhouette inside)
+  // Round-arched openings on all four faces — dark void + half-disc head
+  const openW = stageW - 1.7;
   for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2;
-    b.add(box(2.5, 4.2, 0.12, 1), nightMode ? 'glassLit' : 'interior', {
-      pos: [tx + Math.sin(a) * (stageW / 2 - 0.25), 12.7, tz + Math.cos(a) * (stageW / 2 - 0.25)], rot: [0, a, 0],
-    });
-    // arch head (half-cylinder pressed against the opening)
-    const arch = cylinder(1.25, 1.25, 0.12, 12, 1);
-    arch.rotateX(Math.PI / 2);
-    arch.translate(tx + Math.sin(a) * (stageW / 2 - 0.2), 14.8, tz + Math.cos(a) * (stageW / 2 - 0.2));
-    if (Math.abs(Math.sin(a)) > 0.5) arch.rotateY(Math.PI / 2);
-    b.addGeo(arch, nightMode ? 'glassLit' : 'interior');
+    const a = (i * Math.PI) / 2;
+    const dx = Math.sin(a), dz = Math.cos(a);
+    const px = tx + dx * (stageW / 2 - 0.45), pz = tz + dz * (stageW / 2 - 0.45);
+    const archTopY = belfryY + 3.15;
+    put(b, box(openW, 3.15, 0.14, 1), nightMode ? 'glassLit' : 'interior',
+      [px, belfryY + 3.15 / 2 + 0.35, pz], { yaw: a });
+    put(b, halfDisc(openW / 2, 14), nightMode ? 'glassLit' : 'interior',
+      [px, archTopY + 0.35, pz], { yaw: a });
+    // cream archivolt around the opening
+    for (const q of [-1, 1]) {
+      put(b, box(0.2, 3.4, 0.22, 1.6), 'churchTrim',
+        [tx + dx * (stageW / 2 - 0.36) + dz * q * (openW / 2 + 0.1), belfryY + 1.95,
+         tz + dz * (stageW / 2 - 0.36) - dx * q * (openW / 2 + 0.1)], { yaw: a });
+    }
   }
-  // Bell visible in the tower
-  b.add(cylinder(0.34, 0.72, 1.1, 14), 'brass', { pos: [tx, 12.5, tz] });
-  b.add(cylinder(0.76, 0.76, 0.1, 14), 'brass', { pos: [tx, 11.94, tz] });
-
-  // balustrade railing round the gallery
-  const rr = stageW / 2 + 0.36;
-  b.add(box(stageW + 0.9, 0.24, 0.24, 2), 'churchTrim', { pos: [tx, 10.55, tz + rr] });
-  b.add(box(stageW + 0.9, 0.24, 0.24, 2), 'churchTrim', { pos: [tx, 10.55, tz - rr] });
-  b.add(box(0.24, 0.24, stageW + 0.9, 2), 'churchTrim', { pos: [tx + rr, 10.55, tz] });
-  b.add(box(0.24, 0.24, stageW + 0.9, 2), 'churchTrim', { pos: [tx - rr, 10.55, tz] });
-
-  // -- Upper stage (narrower) with 4 arched windows
-  const upW = 2.9;
-  b.add(box(stageW + 0.9, 0.55, stageW + 0.9, 2), 'churchTrim', { pos: [tx, 15.35, tz] });
-  b.add(box(upW, 4.2, upW, TEXSCALE.brick), 'brick', { pos: [tx, 17.7, tz] });
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    b.add(box(0.44, 4.3, 0.44, 2), 'churchTrim', { pos: [tx + sx * upW / 2, 17.7, tz + sz * upW / 2] });
+  // The swinging bell, visible through the openings
+  b.add(cylinder(0.42, 0.86, 1.3, 16), 'brass', { pos: [tx, belfryY + 2.55, tz] });
+  b.add(cylinder(0.9, 0.9, 0.12, 16), 'brass', { pos: [tx, belfryY + 1.85, tz] });
+  b.add(box(0.14, 0.62, 0.14, 1), 'woodDark', { pos: [tx, belfryY + 3.6, tz] });
+  // timber bell frame
+  for (const sz of [-1, 1]) {
+    b.add(box(1.5, 0.2, 0.2, 1.4), 'woodDark', { pos: [tx, belfryY + 3.86, tz + sz * 0.55] });
   }
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2;
-    put(b, box(1.1, 2.4, 0.12, 1), nightMode ? 'glassLit' : 'glassDark',
-      [tx + Math.sin(a) * (upW / 2 + 0.01), 17.9, tz + Math.cos(a) * (upW / 2 + 0.01)], { yaw: a });
-  }
-  b.add(box(stageW + 0.5, 0.5, stageW + 0.5, 2), 'churchTrim', { pos: [tx, 19.95, tz] });
 
-  // -- Octagonal lantern + dome + cross
-  b.add(cylinder(1.32, 1.5, 1.9, 8), 'churchTrim', { pos: [tx, 21.15, tz] });
+  /* ----------------------------------------------------- cornice + lantern */
+  const cornY = belfryY + belfryH;                // 17.49
+  b.add(box(stageW + 1.1, 0.38, stageW + 1.1, 2.4), 'churchTrim', { pos: [tx, cornY + 0.19, tz] });
+  b.add(box(stageW + 0.6, 0.26, stageW + 0.6, 2.4), 'churchTrim', { pos: [tx, cornY + 0.51, tz] });
+  // small dentil course
+  for (let i = -3; i <= 3; i++) {
+    for (const sz of [-1, 1]) {
+      b.add(box(0.22, 0.2, 0.22, 1.4), 'churchTrim',
+        { pos: [tx + i * (stageW - 0.4) / 3, cornY + 0.08, tz + sz * (stageW / 2 + 0.4)] });
+      b.add(box(0.22, 0.2, 0.22, 1.4), 'churchTrim',
+        { pos: [tx + sz * (stageW / 2 + 0.4), cornY + 0.08, tz + i * (stageW - 0.4) / 3] });
+    }
+  }
+
+  const lantY = cornY + 0.7;                      // 18.19
+  const lantH = 3.5;
+  // Open lantern: 8 posts, glazing behind
+  b.add(cylinder(upW * 0.52, upW * 0.55, lantH, 8), nightMode ? 'glassLit' : 'glassDark',
+    { pos: [tx, lantY + lantH / 2, tz] });
   for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    put(b, box(0.4, 1.6, 0.14, 1), nightMode ? 'glassLit' : 'glassDark',
-      [tx + Math.sin(a) * 1.42, 21.2, tz + Math.cos(a) * 1.42], { yaw: a });
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    put(b, box(0.36, lantH, 0.36, 2.4), 'churchTrim',
+      [tx + Math.sin(a) * upW * 0.56, lantY + lantH / 2, tz + Math.cos(a) * upW * 0.56], { yaw: a });
   }
-  b.add(cylinder(1.7, 1.55, 0.3, 8), 'churchTrim', { pos: [tx, 22.3, tz] });
-  for (const p of dome(1.62, { key: 'churchDome', seg: 20, rings: 9, squash: 1.0 })) {
-    b.addGeo(p.geo.clone().translate(tx, 22.45, tz), p.key);
+  b.add(cylinder(upW * 0.62, upW * 0.72, 0.3, 8), 'churchTrim', { pos: [tx, lantY - 0.12, tz] });
+
+  /* ------------------------------------------------------- dome + finial   */
+  const domeY = lantY + lantH + 0.35;
+  b.add(cylinder(upW * 0.72, upW * 0.78, 0.42, 8), 'churchTrim', { pos: [tx, domeY - 0.2, tz] });
+  for (const p of dome(upW * 0.66, { key: 'churchDome', seg: 22, rings: 10, squash: 1.18 })) {
+    b.addGeo(p.geo.clone().translate(tx, domeY, tz), p.key);
   }
-  b.add(sphere(0.2, 10), 'churchTrim', { pos: [tx, 24.2, tz] });
-  for (const p of cross(1.7, 0.11, 0.11, 'churchTrim')) {
-    b.addGeo(p.geo.clone().translate(tx, 24.25, tz), p.key);
+  // lantern finial ball + cross
+  b.add(cylinder(0.2, 0.3, 0.55, 8), 'churchTrim', { pos: [tx, domeY + upW * 0.66 * 1.18 + 0.2, tz] });
+  b.add(sphere(0.22, 12), 'churchTrim', { pos: [tx, domeY + upW * 0.66 * 1.18 + 0.55, tz] });
+  for (const p of cross(1.9, 0.12, 0.12, 'churchTrim')) {
+    b.addGeo(p.geo.clone().translate(tx, domeY + upW * 0.66 * 1.18 + 0.55, tz), p.key);
   }
 
-  b.addCollider([tx - baseW / 2, 0, tz - baseW / 2], [tx + baseW / 2, H, tz + baseW / 2]);
+  b.addCollider([tx - baseW / 2 - 0.6, 0, tz - baseW / 2 - 0.6],
+                [tx + baseW / 2 + 0.6, cornY, tz + baseW / 2 + 0.6]);
 }

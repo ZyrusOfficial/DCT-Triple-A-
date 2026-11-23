@@ -55,7 +55,10 @@ export const L = {
   church: {
     x: -73.8,
     z: -51.3,
-    rotY: -Math.PI / 2,  // local +Z (façade) → world +X (faces east/the plaza)
+    // Local +Z (the façade) must point EAST at the plaza. A Y-rotation of +π/2
+    // sends local +Z to world +X; −π/2 would send it to world −X (west, away
+    // from the plaza), which is the trap here.
+    rotY: Math.PI / 2,
     naveW: 19.0,
     naveL: 38.0,
     wallH: 11.8,
