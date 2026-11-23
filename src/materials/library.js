@@ -10,6 +10,35 @@ import * as T from './textures.js';
 
 const STD = (opts) => new THREE.MeshStandardMaterial(opts);
 
+/**
+ * Attach derived normal + roughness maps to a material.
+ *
+ * Both are generated from the material's own colour map, so they are perfectly
+ * registered with it. Cheap: a Sobel pass over a 512/256 map is a few
+ * milliseconds, done once at build time.
+ *
+ * @param mat       MeshStandardMaterial to modify in place
+ * @param strength  normal-map strength; 0.6 is a faint grain, 3+ is deep relief
+ * @param rough     { base, swing } for the roughness map, or null to skip
+ */
+function enhance(mat, strength = 1.4, rough = null) {
+  const src = mat && mat.map && mat.map.image;
+  if (!src || !src.getContext) return mat;
+  const n = T.normalFromCanvas(src, strength);
+  mat.normalMap = T.finish(n, {
+    repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
+  });
+  mat.normalScale = new THREE.Vector2(1, 1);
+  if (rough) {
+    const r = T.roughnessFromCanvas(src, rough.base, rough.swing);
+    mat.roughnessMap = T.finish(r, {
+      repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
+    });
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+
 export function buildMaterials() {
   const M = {};
 
@@ -372,6 +401,37 @@ export function buildMaterials() {
   M.lampGlow = STD({
     color: 0xfff2d0, emissive: 0xffe9b8, emissiveIntensity: 1.1, roughness: 0.35,
   });
+
+  /* ------------------------------------------- derived normal/roughness maps */
+  /**
+   * Assign relief by surface class, ordered by value per texture fetch. Rock and
+   * timber gain most (their whole read IS texture); painted plaster gains a
+   * little (it only has to stop looking like vinyl); glass and polished stone are
+   * deliberately skipped, since a normal map on a mirror-flat surface only adds
+   * noise.
+   */
+  enhance(M.rockFace, 3.2, { base: 0.95, swing: 0.16 });
+  enhance(M.interiorPier, 2.8, { base: 0.86, swing: 0.18 });
+
+  for (const k of ['wood', 'woodDark', 'pewWood', 'trussWood', 'deskTop',
+                   'sanctuaryFloor', 'ceilingBoard', 'woodSoffit']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.5, { base: 0.74, swing: 0.2 });
+  }
+  for (const k of ['dctWall', 'dctBand', 'churchWall', 'churchDome',
+                   'interiorPlaster', 'interiorDado', 'dctBlueWall',
+                   'dctBlueBand', 'dctBlueTrim', 'dctSoffit', 'classroomWall',
+                   'classroomCeil', 'paintWhite', 'paintCream',
+                   'houseWallA', 'houseWallB']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.0, { base: 0.8, swing: 0.14 });
+  }
+  for (const k of ['concrete', 'concreteTrim', 'concreteDark', 'paving',
+                   'pavingRed', 'tileCream', 'tileRed', 'dctTerrazzo']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.8, { base: 0.85, swing: 0.16 });
+  }
+  // Roof sheet: the ribs should catch the light.
+  for (const k of ['roofRib', 'dctRoofBlue', 'galv']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 2.2, { base: 0.62, swing: 0.2 });
+  }
 
   return M;
 }

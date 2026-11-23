@@ -723,3 +723,86 @@ export function rockFaceTex(hex = '#8a8175') {
 }
 
 export { valueNoise };
+
+/* ------------------------------------------------------- derived PBR maps */
+/**
+ * Build a tangent-space normal map from a height field.
+ *
+ * The material library had no normal, roughness or AO maps at all — every
+ * surface was colour-only, which is why flat stucco and timber read as flat
+ * regardless of the texture on them. A normal map is the cheapest way to get
+ * surface relief: one extra texture fetch per pixel and no geometry, which is
+ * what matters on an iGPU.
+ *
+ * Sobel gradients over the height field, packed to RGB. `strength` scales the
+ * slope, so a subtle stucco grain and a deep rock face can share this.
+ */
+export function normalFromHeight(h, w, sv, strength = 2.0) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = sv;
+  const x = c.getContext('2d');
+  const img = x.createImageData(w, sv);
+  const d = img.data;
+  const at = (i, j) => h[((j + sv) % sv) * w + ((i + w) % w)];
+  for (let j = 0; j < sv; j++) {
+    for (let i = 0; i < w; i++) {
+      const dx = (at(i + 1, j - 1) + 2 * at(i + 1, j) + at(i + 1, j + 1))
+               - (at(i - 1, j - 1) + 2 * at(i - 1, j) + at(i - 1, j + 1));
+      const dy = (at(i - 1, j + 1) + 2 * at(i, j + 1) + at(i + 1, j + 1))
+               - (at(i - 1, j - 1) + 2 * at(i, j - 1) + at(i + 1, j - 1));
+      let nx = -dx * strength, ny = -dy * strength, nz = 1.0;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len; ny /= len; nz /= len;
+      const k = (j * w + i) * 4;
+      d[k] = (nx * 0.5 + 0.5) * 255;
+      d[k + 1] = (ny * 0.5 + 0.5) * 255;
+      d[k + 2] = (nz * 0.5 + 0.5) * 255;
+      d[k + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+
+/**
+ * Derive a height field from a canvas's luminance, then build the normal map.
+ * The colour map already carries the relief (grain, joints, aggregate, ribs), so
+ * reusing its own luminance keeps the two maps perfectly registered — no second
+ * authoring pass and no chance of the relief drifting out of step.
+ */
+export function normalFromCanvas(src, strength = 2.0) {
+  const w = src.width, hh = src.height;
+  const x = src.getContext('2d');
+  const px = x.getImageData(0, 0, w, hh).data;
+  const hgt = new Float32Array(w * hh);
+  for (let i = 0; i < w * hh; i++) {
+    hgt[i] = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
+  }
+  return normalFromHeight(hgt, w, hh, strength);
+}
+
+/**
+ * Roughness map from the same luminance, inverted around a pivot. Recessed grain
+ * and pores hold dirt and scatter more than raised faces, so darker pixels come
+ * out rougher. Without this every surface has one constant roughness and fresnel
+ * highlights are uniform — the second-biggest reason the render reads flat.
+ */
+export function roughnessFromCanvas(src, base = 0.7, swing = 0.25) {
+  const w = src.width, hh = src.height;
+  const x = src.getContext('2d');
+  const px = x.getImageData(0, 0, w, hh).data;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = hh;
+  const cx = c.getContext('2d');
+  const img = cx.createImageData(w, hh);
+  const d = img.data;
+  for (let i = 0; i < w * hh; i++) {
+    const lum = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
+    const v = Math.max(0, Math.min(1, base + (0.5 - lum) * swing * 2));
+    const k = i * 4;
+    d[k] = d[k + 1] = d[k + 2] = v * 255;
+    d[k + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  return c;
+}
