@@ -10,6 +10,62 @@ import * as T from './textures.js';
 
 const STD = (opts) => new THREE.MeshStandardMaterial(opts);
 
+/**
+ * Attach derived normal + roughness maps to a material.
+ *
+ * Both are generated from the material's own colour map, so they are perfectly
+ * registered with it. Cheap: a Sobel pass over a 512/256 map is a few
+ * milliseconds, done once at build time.
+ *
+ * @param mat       MeshStandardMaterial to modify in place
+ * @param strength  normal-map strength; 0.6 is a faint grain, 3+ is deep relief
+ * @param rough     { base, swing } for the roughness map, or null to skip
+ */
+function enhance(mat, strength = 1.4, rough = null) {
+  const src = mat && mat.map && mat.map.image;
+  if (!src || !src.width) return mat;
+  /**
+   * Build the maps at a small fixed resolution, reading the source ONCE.
+   *
+   * `getImageData` on a 512^2 canvas measures 8.8 SECONDS in SwiftShader (and is
+   * slow on real iGPUs too) because it forces a full readback of a GPU-backed
+   * canvas. Calling it per material — twice, once for the normal map and once
+   * for roughness — was 120 s of a 121 s world build.
+   *
+   * Instead the source is downsampled ONCE to 128^2 with drawImage (cheap, stays
+   * on the GPU), read back once, and both maps are generated from that single
+   * readback in plain JS. 128^2 of low-frequency relief is indistinguishable
+   * from 512^2 under mipmapping, and it cuts the per-material cost by ~16x.
+   */
+  const RES = typeof window !== 'undefined' && window.__reliefRes ? window.__reliefRes : 128;
+  const sc = document.createElement('canvas');
+  sc.width = sc.height = RES;
+  const sx = sc.getContext('2d', { willReadFrequently: true });
+  sx.drawImage(src, 0, 0, RES, RES);
+  const px = sx.getImageData(0, 0, RES, RES).data;
+
+  const hgt = new Float32Array(RES * RES);
+  const lum = new Float32Array(RES * RES);
+  for (let i = 0; i < RES * RES; i++) {
+    lum[i] = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
+  }
+  hgt.set(lum);
+
+  const n = T.normalFromHeight(hgt, RES, RES, strength);
+  mat.normalMap = T.finish(n, {
+    repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
+  });
+  mat.normalScale = new THREE.Vector2(1, 1);
+  if (rough) {
+    const r = T.roughnessFromLum(lum, RES, RES, rough.base, rough.swing);
+    mat.roughnessMap = T.finish(r, {
+      repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
+    });
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+
 export function buildMaterials() {
   const M = {};
 
@@ -65,6 +121,10 @@ export function buildMaterials() {
   M.pavingWarm = STD({ map: T.pavers('#8a7159'), roughness: 0.9 });
   M.pavingRed = STD({ map: T.pavers('#8e6250'), roughness: 0.88 });
   M.tileRed = STD({ map: T.floorTile('#ab4f39', '#83735f'), roughness: 0.46, metalness: 0.02 });
+  M.sanctuaryTile = STD({
+    map: T.floorTile('#9a8260', '#7d6850'), roughness: 0.58,
+    emissive: 0x9a8462, emissiveIntensity: 0.50,
+  });
   M.tileCream = STD({ map: T.floorTile('#cfc4ae', '#a89c88'), roughness: 0.46, metalness: 0.02 });
   // Granite. #b9b2a6 at roughness 0.5 with a bright sky reads as pure white —
   // it was the pale band across the shrine forecourt. Real plaza granite is a
@@ -214,7 +274,10 @@ export function buildMaterials() {
   M.dctPink = STD({ color: 0xb8325a, roughness: 0.46, metalness: 0.05 });
   M.statue = STD({ color: 0xd9d2c4, roughness: 0.72, metalness: 0.02 });
   M.statueRobed = STD({ color: 0x1d1a18, roughness: 0.66, metalness: 0.03 });
-  M.gold = STD({ color: 0xb08a2e, roughness: 0.3, metalness: 0.92 });
+  M.gold = STD({
+    color: 0xc79a38, roughness: 0.3, metalness: 0.9,
+    emissive: 0x6e4e12, emissiveIntensity: 0.42,
+  });
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
   /* ------------------------------------------------------------ water etc */
@@ -226,6 +289,184 @@ export function buildMaterials() {
   for (const k of Object.keys(M)) {
     if (M[k].map) M[k].map.anisotropy = 8;
   }
+  /* ------------------------------------------------- DCT CLASSROOM BLOCKS */
+  /**
+   * The buildings flanking the gate are painted a cool blue-white with a deep
+   * blue band — not the cream used on the main 4-storey slab. Classic Philippine
+   * public-school palette, taken from the campus photographs.
+   */
+  M.dctBlueWall = STD({
+    map: T.stucco('#e8eef2', { seed: 44, dirt: 0.3 }), color: 0xdfe8ee,
+    roughness: 0.72, emissive: 0x1c2226, emissiveIntensity: 0.12,
+  });
+  M.dctBlueBand = STD({ map: T.stucco('#2f5f96', { seed: 45, dirt: 0.2 }), roughness: 0.66 });
+  M.dctBlueTrim = STD({ map: T.stucco('#f6f9fa', { seed: 46, dirt: 0.18 }), roughness: 0.6 });
+  // Blue pre-painted long-run sheet — the second colour these blocks read as.
+  M.dctRoofBlue = STD({ map: T.ribbedRoof('#2c4f7c'), roughness: 0.6, metalness: 0.18 });
+  /**
+   * Corridor soffits and walkway floors sit in permanent shade under the slab
+   * above, so they need the same interreflection stand-in the shrine interior
+   * uses or they render as a black tunnel.
+   */
+  M.dctTerrazzo = STD({
+    map: T.floorTile('#c9c2b4', '#a8a091'), roughness: 0.42, metalness: 0.03,
+    emissive: 0x2a2a28, emissiveIntensity: 0.26,
+  });
+  M.dctSoffit = STD({
+    map: T.stucco('#cfd6d8', { seed: 47, dirt: 0.35 }), roughness: 0.85,
+    emissive: 0x39414a, emissiveIntensity: 0.34,
+  });
+  M.windowGlassN = STD({
+    color: 0x2b3a44, roughness: 0.16, metalness: 0.55,
+    emissive: 0x18242c, emissiveIntensity: 0.4,
+  });
+
+  /* --------------------------------------------------- CLASSROOM FITTINGS */
+  // Enclosed rooms with no window in the light grid, so every one of these
+  // carries the emissive stand-in — otherwise the room renders as a black hole
+  // behind its own open door.
+  M.classroomFloor = STD({
+    map: T.floorTile('#b9a279', '#9b8659'), roughness: 0.5,
+    emissive: 0x2e2a22, emissiveIntensity: 0.30,
+  });
+  M.classroomCeil = STD({
+    map: T.stucco('#eef0ee', { seed: 48, dirt: 0.18 }), roughness: 0.9,
+    emissive: 0x3a3c3c, emissiveIntensity: 0.30,
+  });
+  M.classroomWall = STD({
+    map: T.stucco('#e8e4d6', { seed: 49, dirt: 0.3 }), roughness: 0.88,
+    emissive: 0x333029, emissiveIntensity: 0.28,
+  });
+  M.chalkboard = STD({
+    map: T.stucco('#2f4536', { seed: 50, dirt: 0.15 }), roughness: 0.72,
+    emissive: 0x121a14, emissiveIntensity: 0.34,
+  });
+  M.deskTop = STD({
+    map: T.wood('#9a7448'), roughness: 0.6,
+    emissive: 0x2a2014, emissiveIntensity: 0.28,
+  });
+  M.deskFrame = STD({ color: 0x6d7278, roughness: 0.55, metalness: 0.45 });
+  M.fluorescent = STD({
+    color: 0xf2f6ee, emissive: 0xe8f0e0, emissiveIntensity: 1.5, roughness: 0.4,
+  });
+  M.clockFace = STD({
+    color: 0xf4f2ea, roughness: 0.5, emissive: 0x8a8a80, emissiveIntensity: 0.3,
+  });
+
+  /* ------------------------------------------------------ SHRINE INTERIOR */
+  /**
+   * The nave is a closed masonry box: no sun, no skylight, and only two point
+   * lights inside it. Two lights cannot fill a room this size on their own, so
+   * every interior surface carries a small emissive term standing in for
+   * interreflection. That is a deliberate cheat, not an accident — without it
+   * the interior renders as a black cave.
+   *
+   * The ceiling boarding needs the strongest lift of all: it is lit only from
+   * below, shadowed by its own trusses, and is the largest bright surface in the
+   * room, so it dominates the tone curve.
+   */
+  M.sanctuaryFloor = STD({
+    // Warm stone. The emissive is the interreflection stand-in: with only two
+    // point lights in the box and no bounce, a dark albedo alone reads as a
+    // black pit, which is what removing the old pale shell floor exposed.
+    map: T.graniteTile('#8a6c48'), color: 0xb59a76, roughness: 0.68, metalness: 0.0,
+    emissive: 0x9c8460, emissiveIntensity: 0.55,
+  });
+  M.carpetRed = STD({
+    map: T.stucco('#7d1d20', { seed: 73, dirt: 0.35 }), color: 0xd8b0b0,
+    roughness: 0.96, emissive: 0x4a1214, emissiveIntensity: 0.30,
+  });
+  M.interiorPlaster = STD({
+    map: T.stucco('#efe7d6', { seed: 5, dirt: 0.5 }), color: 0xc2cdd4,
+    roughness: 0.9, emissive: 0x5a6470, emissiveIntensity: 0.30,
+  });
+  M.interiorDado = STD({
+    map: T.wood('#4b2a14'), roughness: 0.62,
+    emissive: 0x3a2814, emissiveIntensity: 0.40,
+  });
+  // Piers reuse the rock map rather than regenerating a texture at a new hex —
+  // the memo key includes the hex, so a new tint means a whole new texture.
+  M.interiorPier = STD({
+    map: M.rockFace.map, color: 0x8a7f70, roughness: 0.85,
+    emissive: 0x2a2620, emissiveIntensity: 0.30,
+  });
+  M.altarDark = STD({
+    map: T.wood('#3a1a10'), roughness: 0.55,
+    emissive: 0x1e0f08, emissiveIntensity: 0.22,
+  });
+  M.altarNiche = STD({
+    map: T.stucco('#8e2a34', { seed: 71, dirt: 0.25 }), roughness: 0.7,
+    emissive: 0x2e0d12, emissiveIntensity: 0.28,
+  });
+  M.goldCross = STD({
+    color: 0xe8c063, roughness: 0.26, metalness: 0.9,
+    emissive: 0x8a6418, emissiveIntensity: 0.55,
+  });
+  M.goldRay = STD({
+    color: 0xf2d288, roughness: 0.22, metalness: 0.9,
+    emissive: 0x7a5a1c, emissiveIntensity: 0.55,
+  });
+  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.28, metalness: 0.04 });
+  M.altarCloth = STD({ map: T.stucco('#f0ece0', { seed: 74, dirt: 0.15 }), roughness: 0.85, emissive: 0x4a4840, emissiveIntensity: 0.2 });
+  M.candleWax = STD({ color: 0xf2ead6, roughness: 0.6, emissive: 0x4a4430, emissiveIntensity: 0.25 });
+  M.pewWood = STD({
+    map: T.wood('#6e4a2c'), roughness: 0.62,
+    emissive: 0x4a3220, emissiveIntensity: 0.45,
+  });
+  /**
+   * Ceiling boarding. The emissive is deliberately strong AND neutral: it is
+   * the brightest large surface in the nave and is only ever lit from below, so
+   * a weak or warm emissive turns the whole roof into a tan-brown mass and
+   * destroys the contrast against the dark timber trusses.
+   */
+  M.ceilingBoard = STD({
+    map: T.wood('#eef2f4'), roughness: 0.92, color: 0xffffff,
+    emissive: 0xd6dade, emissiveIntensity: 0.62,
+  });
+  // Trusses must stay DARK against that boarding — that contrast is the whole
+  // read of an exposed-truss roof.
+  M.trussWood = STD({
+    map: T.wood('#3a1f0e'), color: 0x5a4331, roughness: 0.8,
+    emissive: 0x120c06, emissiveIntensity: 0.05,
+  });
+  M.windowGlow = STD({
+    color: 0xfff4d8, emissive: 0xfff0cc, emissiveIntensity: 1.6, roughness: 0.4,
+  });
+  M.lampGlow = STD({
+    color: 0xfff2d0, emissive: 0xffe9b8, emissiveIntensity: 1.1, roughness: 0.35,
+  });
+
+  /* ------------------------------------------- derived normal/roughness maps */
+  /**
+   * Assign relief by surface class, ordered by value per texture fetch. Rock and
+   * timber gain most (their whole read IS texture); painted plaster gains a
+   * little (it only has to stop looking like vinyl); glass and polished stone are
+   * deliberately skipped, since a normal map on a mirror-flat surface only adds
+   * noise.
+   */
+  enhance(M.rockFace, 3.2, { base: 0.95, swing: 0.16 });
+  enhance(M.interiorPier, 2.8, { base: 0.86, swing: 0.18 });
+
+  for (const k of ['wood', 'woodDark', 'pewWood', 'trussWood', 'deskTop',
+                   'sanctuaryFloor', 'ceilingBoard', 'woodSoffit']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.5, { base: 0.74, swing: 0.2 });
+  }
+  for (const k of ['dctWall', 'dctBand', 'churchWall', 'churchDome',
+                   'interiorPlaster', 'interiorDado', 'dctBlueWall',
+                   'dctBlueBand', 'dctBlueTrim', 'dctSoffit', 'classroomWall',
+                   'classroomCeil', 'paintWhite', 'paintCream',
+                   'houseWallA', 'houseWallB']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.0, { base: 0.8, swing: 0.14 });
+  }
+  for (const k of ['concrete', 'concreteTrim', 'concreteDark', 'paving',
+                   'pavingRed', 'tileCream', 'tileRed', 'dctTerrazzo']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 1.8, { base: 0.85, swing: 0.16 });
+  }
+  // Roof sheet: the ribs should catch the light.
+  for (const k of ['roofRib', 'dctRoofBlue', 'galv']) {
+    if (M[k] && !M[k].normalMap) enhance(M[k], 2.2, { base: 0.62, swing: 0.2 });
+  }
+
   return M;
 }
 

@@ -157,6 +157,47 @@ export function registerInteractions(inter, scene, refs, L) {
       + 'see the nave through the fanlight above them.',
   });
 
+  /* ------------------------------------------------- DCT classroom blocks */
+  /**
+   * Zones sit ON the corridor, not inside a wall.
+   *
+   * The blocks flank the gate with their corridors on the local +Z side. For
+   * rotY = -pi/2, local +Z maps to world -X, so the walkway of a block centred
+   * at x is the strip just west of x - depth/2. These are computed from the
+   * block positions in index.js rather than guessed.
+   */
+  const blocks = [
+    { x: 33.0, z: -16.0, depth: 13 },
+    { x: 34.0, z: 20.0, depth: 13 },
+  ];
+  for (const bl of blocks) {
+    // corridor centreline: 1.3 m in from the block's west face
+    const cx = bl.x - bl.depth / 2 + 1.3;
+    inter.add({
+      x: cx, z: bl.z - 8.5, r: 2.4, y: 1.5,
+      label: 'Look into a classroom',
+      message: 'Desks in three ranks facing a green chalkboard, fluorescent '
+        + 'fittings overhead and a wall clock. Thirty-odd to a section — the '
+        + 'rooms have not changed much since the block went up.',
+    });
+    inter.add({
+      x: cx, z: bl.z + 8.5, r: 2.2, y: 1.5,
+      label: 'Read the room number',
+      message: 'A pressed-steel plate beside the door, painted over so many '
+        + 'times the digits are soft-edged. Room numbers count up from the '
+        + 'stair head on each floor.',
+    });
+    inter.add({
+      x: cx, z: bl.z, r: 2.6, y: 1.6,
+      label: 'Lean on the corridor rail',
+      message: 'The open corridor runs the full length of the block with a '
+        + 'blue-painted parapet instead of glass. In the wet season the rain '
+        + 'blows straight down it; in March it is the coolest place on campus.',
+      run: () => 'You lean on the warm painted parapet and look out over the '
+        + 'frontage. Tricycles idle at the gate.',
+    });
+  }
+
   /* --------------------------------------------------------- the fountain */
   inter.add({
     x: P.cx, z: P.cz, r: 4.6, y: 0.6,
