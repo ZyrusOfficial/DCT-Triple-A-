@@ -17,7 +17,7 @@ import { put } from './place.js';
 import { Builder, box, cylinder, sphere, TEXSCALE } from './kit.js';
 import { buildTown } from './town.js';
 import { buildTerrain } from './terrain.js';
-import { L } from './layout.js';
+import { L, SCOPE } from './layout.js';
 
 function kitColliders(list) {
   return list.map((c) => ({ min: c.min, max: c.max }));
@@ -280,8 +280,16 @@ export class World {
     }
 
     /* ------------------------------------------------------- town hall */
-    // Capas Municipal Hall: 2 storeys, white with a colonnade and a pediment.
-    {
+    /**
+     * Capas Municipal Hall: 2 storeys, white with a colonnade and a pediment.
+     *
+     * OUT OF SCOPE. The brief is the DCT campus, the shrine and the church park;
+     * the town hall stands across the highway on the far side of the park and is
+     * never part of any view of the three subjects. Kept behind SCOPE.municipal
+     * so the portico/pediment work is not thrown away — flip it to true to bring
+     * the building back.
+     */
+    if (SCOPE.municipal) {
       const hx = L.municipal.x, hz = L.municipal.z - 8, W = 40, D = 16, H = 11.5;
       b.add(box(W, H, D, TEXSCALE.concrete), 'paintWhite', { pos: [hx, H / 2, hz], collide: true });
       /**
