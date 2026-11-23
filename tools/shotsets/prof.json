@@ -1,0 +1,4 @@
+[
+  { "name": "prof", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;const r=a.renderer;const mem=r.info.memory;const ren=r.info.render;const out={draws:ren.calls,tris:ren.triangles,geoms:mem.geometries,texs:mem.textures,progs:r.info.programs.length};let meshes=0,inst=0;const byMat={};a.scene.traverse(o=>{if(o.isMesh){meshes++;const n=o.name||'?';const k=n.split(':')[0];byMat[k]=(byMat[k]||0)+1;}if(o.isInstancedMesh)inst++;});out.meshes=meshes;out.instanced=inst;out.groups=byMat;out.colliders=a.world.colliders.length;out.buildMs=a.world.stats.buildMs;return JSON.stringify(out)})()" }
+]
