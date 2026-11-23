@@ -1,0 +1,19 @@
+{
+  "name": "dct-triple-a",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Walkable, photoreal reconstruction of Dominican College of Tarlac, the Diocesan Shrine of San Nicolas de Tolentino, and the Capas town plaza.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "shoot": "node tools/shoot.mjs"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.10"
+  }
+}

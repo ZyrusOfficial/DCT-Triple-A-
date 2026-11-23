@@ -1,0 +1,8 @@
+[
+  { "name": "j-shrine", "cam": [-46, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();return a.inter.active?('PROMPT: '+a.inter.active.label):'none'})()" },
+  { "name": "j-use", "cam": [-46, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();if(!a.inter.active)return 'none';a.inter.use();return 'TOAST: '+(document.getElementById('toast')?.textContent||'?').slice(0,120)})()" },
+  { "name": "j-bench", "cam": [-33, 1.7, -55], "look": [-17, 0.6, -69], "fov": 76, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();return a.inter.active?('PROMPT: '+a.inter.active.label):'none'})()" }
+]

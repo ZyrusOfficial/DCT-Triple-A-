@@ -1,0 +1,4 @@
+[
+  { "name": "m-probe", "cam": [-52, 5.0, -34], "look": [-70, 14, -48], "fov": 66, "hour": 15.5,
+    "exec": "(()=>{const S=window.__app.scene;const out=[];S.traverse(o=>{if(o.isMesh&&/church:(woodSoffit|churchTrim|churchWall|roofRib)/.test(o.name)){const m=o.material;out.push(o.name+' mat='+(m.type)+' col=#'+m.color.getHexString()+' map='+(m.map?'yes':'no')+' rough='+m.roughness+' metal='+m.metalness+' env='+m.envMapIntensity+' side='+m.side+' emissive=#'+(m.emissive?m.emissive.getHexString():'-')+' toneMapped='+m.toneMapped);}});return out.join(' || ')})()" }
+]

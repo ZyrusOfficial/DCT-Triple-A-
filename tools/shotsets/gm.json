@@ -1,0 +1,4 @@
+[
+  { "name": "gm-map", "cam": [-30, 2.4, -66], "look": [-36, 0.1, -62], "fov": 78, "hour": 15.5,
+    "exec": "(()=>{const C={'ground:paving':0xff0000,'ground:pavingRed':0x00ff00,'ground:grass':0x0000ff,'ground:concreteTrim':0xffff00,'ground:concrete':0xff00ff,'ground:asphalt':0x00ffff,'ground:soil':0x888888,'plaza:paving':0xff8800,'plaza:grass':0x0088ff,'plaza:concreteTrim':0xffffff};const hit=[];window.__app.scene.traverse(o=>{if(o.isMesh&&C[o.name]!==undefined){o.material=new THREE.MeshBasicMaterial({color:C[o.name]});hit.push(o.name);}});return hit.join(',')})()" }
+]

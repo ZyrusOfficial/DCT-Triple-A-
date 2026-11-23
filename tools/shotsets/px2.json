@@ -1,0 +1,5 @@
+[
+  { "name": "px2-a", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5 },
+  { "name": "px2-b", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{window.__app.post.exposure=0.55;return 'exp 0.55'})()" }
+]

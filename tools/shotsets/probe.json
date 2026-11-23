@@ -1,0 +1,4 @@
+[
+  { "name": "p-iso", "cam": [40, 60, 40], "look": [0, 8, 0], "fov": 50, "hour": 15.5,
+    "exec": "(()=>{const S=window.__app.scene;const hits=[];S.traverse(o=>{if(o.isMesh&&/church/.test(o.name)){const bb=new THREE.Box3().setFromObject(o);const size=bb.getSize(new THREE.Vector3());hits.push(o.name+' vol='+size.x.toFixed(0)+'x'+size.y.toFixed(0)+'x'+size.z.toFixed(0)+' tr='+Math.round(o.geometry.attributes.position.count/3));}});return hits.join(' | ')})()" }
+]

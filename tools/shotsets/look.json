@@ -1,0 +1,8 @@
+[
+  { "name": "i-bench", "cam": [-33.4, 1.7, -55.6], "look": [-20, 1.0, -66], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();const z=a.inter.active;return z?('PROMPT: '+z.label):'no zone; update='+(typeof a.inter.update)})()" },
+  { "name": "i-shrine", "cam": [-46, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();return a.inter.active?('PROMPT: '+a.inter.active.label):'none'})()" },
+  { "name": "i-use", "cam": [-46, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;const z=a.inter.active;if(!z)return 'none';a.inter.use();return 'used: '+z.label+' -> '+(document.getElementById('toast')?.textContent||'').slice(0,90)})()" }
+]

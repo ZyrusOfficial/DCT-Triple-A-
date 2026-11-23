@@ -1,0 +1,6 @@
+[
+  { "name": "el4a", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{let g;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='ground:granite')g=o;});if(!g)return 'none';const m=g.material;const t=m.map;const cv=t.image;const cx=cv.getContext('2d');const d=cx.getImageData(10,10,1,1).data;return 'texpx='+d[0]+','+d[1]+','+d[2]+' mapColorSpace='+t.colorSpace+' matColor=#'+m.color.getHexString()+' rough='+m.roughness+' metal='+m.metalness})()" },
+  { "name": "el4b", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74,
+    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='ground:granite'){o.material=new THREE.MeshBasicMaterial({color:0x555555});n++;}});return 'granite->flat 0x555555 '+n})()" }
+]

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.capture/
+# Screenshot artefacts produced by tools/shoot.mjs (regenerate any time)
+captures/*.png
+!captures/.keep
+# Reference images gathered during research are kept — they document the build
