@@ -10,6 +10,7 @@ import { SkySystem } from './render/sky.js';
 import { PostFX } from './render/post.js';
 import { World } from './world/index.js';
 import { L } from './world/layout.js';
+import { Interaction, registerInteractions } from './player/interaction.js';
 import { Player } from './player/controller.js';
 
 const app = document.getElementById('app');
@@ -80,6 +81,7 @@ const ui = {
 
 let world = null;
 let player = null;
+let inter = null;
 let clock = new THREE.Clock();
 let statsAccum = 0, frames = 0, fps = 0;
 let toastTimer = null;
@@ -106,6 +108,20 @@ async function boot() {
   await world.build(progress);
 
   player = new Player(camera, world);
+  inter = new Interaction(scene, player);
+  registerInteractions(inter, scene, { ...(world.refs || {}), sky }, L);
+  inter.onChange = (label) => {
+    if (label) {
+      ui.reticle.classList.add('hot');
+      ui.prompt.innerHTML = `<em>E</em> ${label}`;
+      ui.prompt.classList.add('on');
+    } else {
+      ui.reticle.classList.remove('hot');
+      ui.prompt.classList.remove('on');
+    }
+  };
+  inter.onMessage = (msg) => toast(msg, 5200);
+  player.onInteract = () => inter.use();
   player.attach(renderer.domElement);
   /**
    * Spawn where a visitor actually arrives: on the campus driveway just inside
@@ -136,7 +152,7 @@ async function boot() {
     setTimeout(() => (ui.boot.style.display = 'none'), 800);
   }, 220);
 
-  window.__app = { scene, camera, renderer, post, sky, world, player, state, debugCam };
+  window.__app = { inter, scene, camera, renderer, post, sky, world, player, state, debugCam };
   window.setDebugCam = (px, py, pz, tx, ty, tz, fov = 55) => {
     debugCam.position.set(px, py, pz);
     debugCam.fov = fov;
@@ -194,7 +210,8 @@ function animate() {
   if (frameNo++ % 3 === 0) probeInteraction();
 
   renderer.info.reset();
-  post.render(scene, clock.elapsedTime, window.__debugCamOn ? debugCam : null);
+  const renderCam = window.__debugCamOn ? debugCam : null;
+  post.render(scene, clock.elapsedTime, renderCam);
 
   // HUD
   statsAccum += dt; frames++;
@@ -220,17 +237,14 @@ function fmtCount(n) {
 }
 
 /* ------------------------------------------------------------ interaction */
+/**
+ * Zone-based proximity probing. This replaced a per-frame raycast against the
+ * merged scene, which was both expensive (the whole world is welded into a few
+ * dozen meshes, so every hit tested ~400k triangles) and useless for telling
+ * one bench from another.
+ */
 function probeInteraction() {
-  if (!player) return;
-  const hit = player.probe(scene);
-  if (hit) {
-    ui.reticle.classList.add('hot');
-    ui.prompt.innerHTML = `<em>E</em> ${hit.object.userData.interact}`;
-    ui.prompt.classList.add('on');
-  } else {
-    ui.reticle.classList.remove('hot');
-    ui.prompt.classList.remove('on');
-  }
+  if (inter) inter.update();
 }
 
 /* --------------------------------------------------------------------- UI */

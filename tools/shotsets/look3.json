@@ -1,0 +1,6 @@
+[
+  { "name": "k-shrine", "cam": [-47.5, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();return a.inter.active?('PROMPT: '+a.inter.active.label):'none'})()" },
+  { "name": "k-use", "cam": [-47.5, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const a=window.__app;a.inter.update();if(!a.inter.active)return 'none';a.inter.use();return 'TOAST: '+(document.getElementById('toast')?.textContent||'?').slice(0,140)})()" }
+]

@@ -107,6 +107,7 @@ export class World {
     }
 
     /* -------------------------------------------------- plaza lamp posts */
+    const lampPositions = [];
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       const lx = PX + Math.cos(a) * 12.5;
@@ -115,9 +116,11 @@ export class World {
       b.add(box(0.34, 0.1, 0.34, 1), 'ironDark', { pos: [lx, 3.7, lz] });
       b.add(box(0.3, 0.42, 0.3, 1), 'glassLit', { pos: [lx, 3.95, lz] });
       b.add(cylinder(0.06, 0.2, 0.22, 8), 'ironDark', { pos: [lx, 4.24, lz] });
+      lampPositions.push({ x: lx, z: lz });
     }
 
     /* -------------------------------------------- benches around the plaza */
+    const benchPositions = [];
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + 0.4;
       const bx = PX + Math.cos(a) * 17.5;
@@ -132,6 +135,7 @@ export class World {
         });
       }
       b.addCollider([bx - 1.1, 0, bz - 0.6], [bx + 1.1, 0.9, bz + 0.6]);
+      benchPositions.push({ x: bx, z: bz, rot });
     }
 
     /* --------------------------------------------- Jose Rizal monument */
@@ -272,6 +276,9 @@ export class World {
 
     const signs = b.signs || [];
     b.buildInto(this.root, M);
+    // Handed to the interaction layer so props can be offered by proximity
+    // without raycasting merged geometry every frame.
+    this.refs = { benches: benchPositions, lamps: lampPositions };
   }
 
   /* ---------------------------------------------------------- vegetation */

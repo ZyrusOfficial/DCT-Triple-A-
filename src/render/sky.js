@@ -160,7 +160,9 @@ export class SkySystem {
       uNight: { value: 0.0 },
     };
 
-    this.geo = new THREE.SphereGeometry(1, 32, 20);
+    // Segments matter: with too few the dome's silhouette shows faceting along
+    // the horizon, which reads as a hard ring in the distance.
+    this.geo = new THREE.SphereGeometry(1, 48, 28);
     this.mat = new THREE.ShaderMaterial({
       vertexShader: SKY_VERT.replace('varying vec3 vWorld;', ''),
       fragmentShader: SKY_FRAG.replace('varying vec3 vWorld;', ''),
@@ -171,7 +173,12 @@ export class SkySystem {
       fog: false,
     });
     this.dome = new THREE.Mesh(this.geo, this.mat);
-    this.dome.scale.setScalar(4000);
+    /**
+     * The dome radius MUST stay inside every camera's far plane, or it is
+     * clipped and you get a hard arc across the sky (a pale dome edge sitting
+     * above the hills). The walk camera's far plane is 2600.
+     */
+    this.dome.scale.setScalar(2400);
     this.dome.frustumCulled = false;
     this.dome.renderOrder = -1000;
     scene.add(this.dome);
