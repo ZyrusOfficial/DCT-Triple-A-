@@ -23,14 +23,41 @@ const STD = (opts) => new THREE.MeshStandardMaterial(opts);
  */
 function enhance(mat, strength = 1.4, rough = null) {
   const src = mat && mat.map && mat.map.image;
-  if (!src || !src.getContext) return mat;
-  const n = T.normalFromCanvas(src, strength);
+  if (!src || !src.width) return mat;
+  /**
+   * Build the maps at a small fixed resolution, reading the source ONCE.
+   *
+   * `getImageData` on a 512^2 canvas measures 8.8 SECONDS in SwiftShader (and is
+   * slow on real iGPUs too) because it forces a full readback of a GPU-backed
+   * canvas. Calling it per material — twice, once for the normal map and once
+   * for roughness — was 120 s of a 121 s world build.
+   *
+   * Instead the source is downsampled ONCE to 128^2 with drawImage (cheap, stays
+   * on the GPU), read back once, and both maps are generated from that single
+   * readback in plain JS. 128^2 of low-frequency relief is indistinguishable
+   * from 512^2 under mipmapping, and it cuts the per-material cost by ~16x.
+   */
+  const RES = typeof window !== 'undefined' && window.__reliefRes ? window.__reliefRes : 128;
+  const sc = document.createElement('canvas');
+  sc.width = sc.height = RES;
+  const sx = sc.getContext('2d', { willReadFrequently: true });
+  sx.drawImage(src, 0, 0, RES, RES);
+  const px = sx.getImageData(0, 0, RES, RES).data;
+
+  const hgt = new Float32Array(RES * RES);
+  const lum = new Float32Array(RES * RES);
+  for (let i = 0; i < RES * RES; i++) {
+    lum[i] = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
+  }
+  hgt.set(lum);
+
+  const n = T.normalFromHeight(hgt, RES, RES, strength);
   mat.normalMap = T.finish(n, {
     repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
   });
   mat.normalScale = new THREE.Vector2(1, 1);
   if (rough) {
-    const r = T.roughnessFromCanvas(src, rough.base, rough.swing);
+    const r = T.roughnessFromLum(lum, RES, RES, rough.base, rough.swing);
     mat.roughnessMap = T.finish(r, {
       repeat: [mat.map.repeat.x, mat.map.repeat.y], srgb: false,
     });

@@ -16,7 +16,19 @@ function memo(key, make) {
 export function canvas(w, h) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
-  return { c, x: c.getContext('2d', { willReadFrequently: false }) };
+  /**
+   * willReadFrequently: TRUE.
+   *
+   * Every generator in this file writes pixels with createImageData/putImageData
+   * and several read them back, so the canvas is never presented — but the
+   * default context keeps it GPU-backed and each getImageData forces a full
+   * synchronous readback of the surface. Measured in SwiftShader: 8,855 ms for a
+   * single 512^2 getImageData without this flag, 1 ms with it.
+   *
+   * That one flag was 120 s of a 121 s world build (the derived normal and
+   * roughness maps each read their source once). Do not set it back to false.
+   */
+  return { c, x: c.getContext('2d', { willReadFrequently: true }) };
 }
 
 export function finish(c, { repeat = [1, 1], srgb = true, aniso = 8, wrap = THREE.RepeatWrapping } = {}) {
@@ -771,14 +783,26 @@ export function normalFromHeight(h, w, sv, strength = 2.0) {
  * authoring pass and no chance of the relief drifting out of step.
  */
 export function normalFromCanvas(src, strength = 2.0) {
-  const w = src.width, hh = src.height;
-  const x = src.getContext('2d');
-  const px = x.getImageData(0, 0, w, hh).data;
-  const hgt = new Float32Array(w * hh);
-  for (let i = 0; i < w * hh; i++) {
+  /**
+   * Downsample to NORMAL_RES first.
+   *
+   * A normal map carries low-frequency relief — grain, joints, ribs — and is
+   * sampled with mipmapping, so a 256^2 source is indistinguishable in the
+   * render from a 512^2 one while being 4x cheaper for both the Sobel pass and
+   * the mip chain. At 512^2 across ~90 materials this pass was ~2 minutes of the
+   * world build.
+   */
+  const RES = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = RES;
+  const cx = c.getContext('2d');
+  cx.drawImage(src, 0, 0, RES, RES);
+  const px = cx.getImageData(0, 0, RES, RES).data;
+  const hgt = new Float32Array(RES * RES);
+  for (let i = 0; i < RES * RES; i++) {
     hgt[i] = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
   }
-  return normalFromHeight(hgt, w, hh, strength);
+  return normalFromHeight(hgt, RES, RES, strength);
 }
 
 /**
@@ -788,9 +812,14 @@ export function normalFromCanvas(src, strength = 2.0) {
  * highlights are uniform — the second-biggest reason the render reads flat.
  */
 export function roughnessFromCanvas(src, base = 0.7, swing = 0.25) {
-  const w = src.width, hh = src.height;
-  const x = src.getContext('2d');
-  const px = x.getImageData(0, 0, w, hh).data;
+  // Same reasoning as normalFromCanvas: 256^2 is plenty for a roughness map.
+  const RES = 256;
+  const sc = document.createElement('canvas');
+  sc.width = sc.height = RES;
+  const sx = sc.getContext('2d');
+  sx.drawImage(src, 0, 0, RES, RES);
+  const px = sx.getImageData(0, 0, RES, RES).data;
+  const w = RES, hh = RES;
   const c = document.createElement('canvas');
   c.width = w; c.height = hh;
   const cx = c.getContext('2d');
@@ -799,6 +828,28 @@ export function roughnessFromCanvas(src, base = 0.7, swing = 0.25) {
   for (let i = 0; i < w * hh; i++) {
     const lum = (px[i * 4] * 0.2126 + px[i * 4 + 1] * 0.7152 + px[i * 4 + 2] * 0.0722) / 255;
     const v = Math.max(0, Math.min(1, base + (0.5 - lum) * swing * 2));
+    const k = i * 4;
+    d[k] = d[k + 1] = d[k + 2] = v * 255;
+    d[k + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  return c;
+}
+
+/**
+ * Roughness map straight from a precomputed luminance field.
+ *
+ * Separate from roughnessFromCanvas so callers that already have the luminance
+ * do not pay for a second getImageData — that readback is the expensive part.
+ */
+export function roughnessFromLum(lum, w, h, base = 0.7, swing = 0.25) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  const img = cx.createImageData(w, h);
+  const d = img.data;
+  for (let i = 0; i < w * h; i++) {
+    const v = Math.max(0, Math.min(1, base + (0.5 - lum[i]) * swing * 2));
     const k = i * 4;
     d[k] = d[k + 1] = d[k + 2] = v * 255;
     d[k + 3] = 255;

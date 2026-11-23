@@ -40,19 +40,40 @@ export class World {
     const t0 = performance.now();
     const scene = this.scene;
 
+    /**
+     * Per-stage timings. Without these, a build that has doubled in cost is
+     * indistinguishable from one that has not: the only symptom is a slower
+     * boot, and guessing which stage is responsible wastes more time than the
+     * timer costs. Recorded on world.stats.timings and logged once.
+     */
+    const timings = {};
+    let tPrev = t0;
+    const stage = (name) => {
+      const now = performance.now();
+      timings[name] = Math.round(now - tPrev);
+      tPrev = now;
+    };
+
     onProgress(0.04, 'mixing materials');
     this.M = buildMaterials();
     const M = this.M;
+    stage('materials');
 
     onProgress(0.12, 'shaping the plain');
     buildTerrain(this.root, M);
 
+    stage('terrain');
+
     onProgress(0.20, 'laying ground');
     const ground = buildGround(this.root, M);
+
+    stage('ground');
 
     onProgress(0.30, 'raising the shrine');
     const church = buildChurch(this.root, M, { nightMode: false });
     this.colliders.push(...church.colliders);
+
+    stage('shrine');
 
     onProgress(0.48, 'framing the main building');
     const main = buildMainBuilding(this.root, M);
@@ -93,15 +114,23 @@ export class World {
       }
     }
 
+    stage('mainBuilding');
+
     onProgress(0.62, 'setting the gate');
     const gate = buildGate(this.root, M);
     this.colliders.push(...gate.colliders);
 
+    stage('gate');
+
     onProgress(0.70, 'modelling the plaza');
     this.buildPlazaExtras(M);
 
+    stage('plaza');
+
     onProgress(0.74, 'building the poblacion');
     buildTown(this.root, M);
+
+    stage('town');
 
     onProgress(0.80, 'planting');
     this.plantVegetation(M);
@@ -109,6 +138,10 @@ export class World {
     onProgress(0.94, 'finishing');
     this.registerPlaces();
     this.stats.buildMs = Math.round(performance.now() - t0);
+    stage('vegetation');
+    this.stats.timings = timings;
+    this.stats.buildMs = Math.round(performance.now() - t0);
+    console.log('[build] timings', JSON.stringify(timings), 'total', this.stats.buildMs);
     onProgress(1.0, 'ready');
     return this;
   }
