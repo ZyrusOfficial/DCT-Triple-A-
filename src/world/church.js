@@ -155,9 +155,24 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     bp.add(box(0.75, 1.3, 3.6, 2), 'concreteTrim',
       { pos: [sx * (NW / 2 + 4.5), 0.65, NL / 2 + 4.4], collide: true });
   }
-  // Floor slab & interior floor (authored at grade; the group offset lifts it)
+  // Floor slab (authored at grade; the group offset lifts it)
   b.add(box(NW + 1.2, 0.5, NL + 0.8, TEXSCALE.concrete), 'concreteDark', { pos: [0, 0.25, 0], collide: true });
-  b.add(box(NW - 1.0, 0.1, NL - 1.0, TEXSCALE.paving), 'tileCream', { pos: [0, 0.52, 0] });
+  /**
+   * NO NAVE FLOOR HERE.
+   *
+   * There used to be a tileCream slab filling the nave at y 0.52, and it was the
+   * pale surface you saw when you walked in — sitting half a metre ABOVE the
+   * interior's own floor, so the interior floor, red runner and sanctuary
+   * platform were all buried under it. It also made the nave read as a white
+   * tiled hall rather than the stone floor in the references.
+   *
+   * Confirmed by ray-casting down from inside: first hit church:tileCream at
+   * 1.28 m, ahead of church-interior:sanctuaryFloor at 1.79 m.
+   *
+   * The nave floor belongs to church-interior.js, which builds it together with
+   * the runner and the sanctuary platform. The apse surround outside the south
+   * wall is kept, since nothing inside replaces it.
+   */
   b.add(box(NW * 0.7, 0.1, 5.2, TEXSCALE.paving), 'tileCream', { pos: [0, 0.52, -NL / 2 - 1.6] });
 
   /* ========================================================= FRONT FAÇADE */
@@ -388,12 +403,40 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
       b.add(box(4.2, 0.5, 0.95, 1.5), 'churchTrim', { pos: [0, 5.15, facadeZ + 0.34] });
       for (const s of [-1, 1]) {
         b.add(box(0.34, 5.0, 0.95, 1.5), 'churchTrim', { pos: [s * 1.95, 2.5, facadeZ + 0.34] });
-        // leaf
-        b.add(box(1.72, 4.6, 0.16, 1.2), 'woodDark', { pos: [s * 0.9, 2.35, dz], collide: true });
-        // carved panels
-        b.add(box(1.16, 1.75, 0.06, 1), 'wood', { pos: [s * 0.9, 3.55, dz + 0.11] });
-        b.add(box(1.16, 1.35, 0.06, 1), 'wood', { pos: [s * 0.9, 1.5, dz + 0.11] });
-        b.add(cylinder(0.045, 0.045, 0.6, 6), 'brass', { pos: [s * 0.26, 2.35, dz + 0.18] });
+        /**
+         * Leaf, standing OPEN.
+         *
+         * The interior is a fully modelled space and the whole point is that you
+         * can walk into it, so a shut leaf (which is also a collider) walls it
+         * off. Each leaf is hinged at its outer jamb and swung ~94 degrees into
+         * the nave.
+         *
+         * put() rotates about the geometry's own origin BEFORE translating, so
+         * the geometry is offset half a leaf along +X first to put the rotation
+         * centre on the hinge.
+         */
+        {
+          const HALF = 0.86;
+          const hinge = s * 1.76;          // outer jamb, in the shrine's local X
+          const swing = s * Math.PI * 0.52 * -1;
+          // The leaf and its carved panels are built as one hinged assembly, so
+          // they swing together: each piece is offset to the hinge before the
+          // shared rotation.
+          const leaf = new THREE.BoxGeometry(1.72, 4.6, 0.16);
+          leaf.translate(HALF, 0, 0);
+          put(b, leaf, 'woodDark', [hinge, 2.35, dz], { yaw: swing });
+
+          for (const [py, ph] of [[1.2, 1.75], [3.15, 1.35]]) {
+            const panel = new THREE.BoxGeometry(1.16, ph, 0.06);
+            panel.translate(HALF, 0, 0.11);
+            put(b, panel, 'wood', [hinge, 2.35 + py - 1.0, dz], { yaw: swing });
+          }
+          // handle, on the leading stile
+          const grip = new THREE.CylinderGeometry(0.045, 0.045, 0.6, 6);
+          grip.rotateX(Math.PI / 2);
+          grip.translate(1.62, 0, 0.18);
+          put(b, grip, 'brass', [hinge, 2.35, dz], { yaw: swing });
+        }
       }
       // transom light
       b.add(box(3.3, 0.6, 0.12, 1), nightMode ? 'glassLit' : 'glass', { pos: [0, 4.9, dz + 0.02] });
@@ -561,12 +604,25 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
    * every material in the scene — so the interreflection stand-in on the
    * interior materials does the rest.
    */
-  const naveLight = new THREE.PointLight(0xfffaf2, 32, 48, 1.25);
-  naveLight.position.set(0, WH - 3.0, 4.0);
-  const altarLight = new THREE.PointLight(0xfff2dd, 28, 28, 1.4);
+  const naveLight = new THREE.PointLight(0xfff6e8, 20, 52, 1.15);
+  naveLight.position.set(0, WH - 1.6, 4.0);
+  const altarLight = new THREE.PointLight(0xffeecd, 18, 30, 1.3);
   altarLight.position.set(0, WH - 2.4, -NL / 2 + 4.0);
-  group.add(naveLight, altarLight);
-  churchLights.push(naveLight, altarLight);
+  /**
+   * Low fill, standing in for floor bounce.
+   *
+   * Two point lights hung near the roof wash the tops of the walls and the
+   * ceiling, but a point light's inverse-square falloff means the floor 9 m
+   * below them gets a fraction of that. In a real nave the floor is lit by
+   * light bouncing off itself — which a forward renderer does not compute. This
+   * third light sits low and near the aisle, is dim, and its whole job is to
+   * give the floor and pews a base level so the nave does not read as a pit
+   * below a bright ceiling.
+   */
+  const floorFill = new THREE.PointLight(0xffe9cc, 14, 34, 1.0);
+  floorFill.position.set(0, 1.6, -2.0);
+  group.add(naveLight, altarLight, floorFill);
+  churchLights.push(naveLight, altarLight, floorFill);
 
   for (const l of churchLights) group.add(l);
 

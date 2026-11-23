@@ -45,7 +45,7 @@ export function buildChurchInterior(parent, M, CH) {
   // (top 0.25), and must stop short of the platform or it is buried by it.
   b.add(box(2.2, 0.035, NL - 9.0, 4), 'carpetRed', { pos: [0, 0.09, 2.6] });
   b.add(box(NW - 3.0, 0.22, 6.0, 3), 'sanctuaryFloor', { pos: [0, 0.14, apseZ + 4.1] });
-  b.add(box(NW - 2.4, 0.02, 5.6, 4), 'tileCream', { pos: [0, 0.26, apseZ + 4.1] });
+  b.add(box(NW - 2.4, 0.02, 5.6, 4), 'sanctuaryTile', { pos: [0, 0.26, apseZ + 4.1] });
 
   /* ------------------------------------------------------------- WALLS */
   for (const s of [-1, 1]) {

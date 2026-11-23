@@ -94,6 +94,10 @@ export function buildMaterials() {
   M.pavingWarm = STD({ map: T.pavers('#8a7159'), roughness: 0.9 });
   M.pavingRed = STD({ map: T.pavers('#8e6250'), roughness: 0.88 });
   M.tileRed = STD({ map: T.floorTile('#ab4f39', '#83735f'), roughness: 0.46, metalness: 0.02 });
+  M.sanctuaryTile = STD({
+    map: T.floorTile('#9a8260', '#7d6850'), roughness: 0.58,
+    emissive: 0x9a8462, emissiveIntensity: 0.50,
+  });
   M.tileCream = STD({ map: T.floorTile('#cfc4ae', '#a89c88'), roughness: 0.46, metalness: 0.02 });
   // Granite. #b9b2a6 at roughness 0.5 with a bright sky reads as pure white —
   // it was the pale band across the shrine forecourt. Real plaza granite is a
@@ -335,8 +339,11 @@ export function buildMaterials() {
    * room, so it dominates the tone curve.
    */
   M.sanctuaryFloor = STD({
-    map: T.graniteTile('#8a6c48'), color: 0xa89070, roughness: 0.62, metalness: 0.02,
-    emissive: 0x201a12, emissiveIntensity: 0.08,
+    // Warm stone. The emissive is the interreflection stand-in: with only two
+    // point lights in the box and no bounce, a dark albedo alone reads as a
+    // black pit, which is what removing the old pale shell floor exposed.
+    map: T.graniteTile('#8a6c48'), color: 0xb59a76, roughness: 0.68, metalness: 0.0,
+    emissive: 0x9c8460, emissiveIntensity: 0.55,
   });
   M.carpetRed = STD({
     map: T.stucco('#7d1d20', { seed: 73, dirt: 0.35 }), color: 0xd8b0b0,
@@ -348,7 +355,7 @@ export function buildMaterials() {
   });
   M.interiorDado = STD({
     map: T.wood('#4b2a14'), roughness: 0.62,
-    emissive: 0x201408, emissiveIntensity: 0.30,
+    emissive: 0x3a2814, emissiveIntensity: 0.40,
   });
   // Piers reuse the rock map rather than regenerating a texture at a new hex —
   // the memo key includes the hex, so a new tint means a whole new texture.
@@ -377,7 +384,7 @@ export function buildMaterials() {
   M.candleWax = STD({ color: 0xf2ead6, roughness: 0.6, emissive: 0x4a4430, emissiveIntensity: 0.25 });
   M.pewWood = STD({
     map: T.wood('#6e4a2c'), roughness: 0.62,
-    emissive: 0x2e1f12, emissiveIntensity: 0.35,
+    emissive: 0x4a3220, emissiveIntensity: 0.45,
   });
   /**
    * Ceiling boarding. The emissive is deliberately strong AND neutral: it is
