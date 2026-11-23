@@ -96,26 +96,50 @@ export function buildGround(parent, M) {
 
   /* ------------------------------------------------------- DCT FRONTAGE */
   // Paved apron outside the gate, and the driveway climbing into the yard.
-  // Gate apron on the highway, facing the campus entrance.
-  b.addGeo(rect(hw1 - 0.5, L.gate.z - 8.0, L.gate.x + 6.0, L.gate.z + 8.0, 0.06, TEXSCALE.concrete), 'concrete');
-  // Driveway running west from the gate into the campus yard.
-  b.addGeo(rect(L.gate.x - 4.0, L.gate.z - 7.0, L.gate.x + 6.0, L.gate.z + 7.0, 0.062, TEXSCALE.concrete), 'concrete');
-  for (const z of [L.gate.z - 7.2, L.gate.z + 7.2]) {
-    b.add(box(11.0, 0.15, 0.24, 1.5), 'concreteTrim', { pos: [L.gate.x + 1.0, 0.075, z] });
+  // Gate apron reaching from the highway carriageway to the campus yard.
+  b.addGeo(rect(hw1 - 0.5, L.gate.z - 9.0, L.gate.x + 8.0, L.gate.z + 9.0, 0.062, TEXSCALE.concrete), 'concrete');
+  // Driveway from the highway, through the gate, into the campus yard.
+  b.addGeo(rect(L.gate.x - 6.0, L.gate.z - 7.5, hw1 + 0.6, L.gate.z + 7.5, 0.066, TEXSCALE.concrete), 'concrete');
+  for (const z of [L.gate.z - 7.7, L.gate.z + 7.7]) {
+    b.add(box(14.0, 0.16, 0.26, 1.5), 'concreteTrim', { pos: [L.gate.x + 1.0, 0.08, z] });
   }
 
   /* ---------------------------------------------------------- CAMPUS YARD */
+  /**
+   * DCT campus yard.
+   *
+   * Laid out as a Philippine schoolyard actually is: a broad hard-paved
+   * forecourt in front of the main building, a lawn panel either side of the
+   * central axis with trees on it, and a driveway running in from the gate.
+   *
+   * Height rule (this is what keeps the ground from flickering or floating):
+   *     base paving 0.070  <  grass panels 0.078  <  axis / paths 0.090
+   * Every lawn must sit just ABOVE the paving it interrupts and just BELOW the
+   * paths that cross it.
+   */
   const Y = L.yard;
-  b.addGeo(rect(Y.xMin, Y.zMin, Y.xMax, Y.zMax, 0.075, TEXSCALE.paving), 'paving');
-  // Lawn panels either side of the main axis
-  b.addGeo(rect(-34, -20, -12, 6, 0.085, TEXSCALE.grass), 'grass');
-  b.addGeo(rect(-34, 14, -12, 40, 0.085, TEXSCALE.grass), 'grass');
-  b.addGeo(rect(-30, -24, 18, -12, 0.085, TEXSCALE.grass), 'grass');
-  // Main axis from the gate straight to the building's porte-cochère
-  b.addGeo(rect(-70, L.gate.z - 3.6, L.gate.x + 3.0, L.gate.z + 3.6, 0.095, 3.2), 'pavingRed');
-  // Circular inlay at the crossing in front of the building
-  b.addGeo(disc(-30, L.gate.z, 8.0, 0.1, 2.6), 'pavingRed');
-  b.addGeo(ringGeo(-30, L.gate.z, 8.0, 9.1, 0.105, 2.0), 'concreteTrim');
+  b.addGeo(rect(Y.xMin, Y.zMin, Y.xMax, Y.zMax, 0.070, TEXSCALE.paving), 'paving');
+
+  // Lawn panels — kept clear of the gate axis (z = gate.z ± 4) and of the
+  // building's forecourt, so the axis reads as an open, walkable corridor.
+  const LAWN = 0.078;
+  // north-west quadrangle (between the building and the shrine approach)
+  b.addGeo(rect(-66, -24.0, -50, -10.0, LAWN, TEXSCALE.grass), 'grass');
+  // the two big panels flanking the axis, in front of the building
+  b.addGeo(rect(-44, -22.0, -14, -10.5, LAWN, TEXSCALE.grass), 'grass');
+  b.addGeo(rect(-44, -1.5, -14, 12.0, LAWN, TEXSCALE.grass), 'grass');
+  // south panels, toward the covered court and the frontage road
+  b.addGeo(rect(-44, 16.0, -16, 34.0, LAWN, TEXSCALE.grass), 'grass');
+  b.addGeo(rect(-8, 16.0, 10, 40.0, LAWN, TEXSCALE.grass), 'grass');
+
+  // Central axis: gate -> porte-cochère. This is the ceremonial approach.
+  b.addGeo(rect(-74, L.gate.z - 3.6, L.gate.x + 6.0, L.gate.z + 3.6, 0.090, 3.2), 'pavingRed');
+
+  // Forecourt apron directly in front of the main building entrance.
+  b.addGeo(rect(-72, -8.5, -52, 26.0, 0.084, TEXSCALE.paving), 'paving');
+  // Circular inlay where the axis meets the forecourt.
+  b.addGeo(disc(-52, L.gate.z, 7.0, 0.094, 2.6), 'pavingRed');
+  b.addGeo(ringGeo(-52, L.gate.z, 7.0, 8.0, 0.098, 2.0), 'concreteTrim');
 
   /* --------------------------------------------------- SHRINE FORECOURT */
   const F = L.forecourt;

@@ -49,7 +49,11 @@ export const L = {
   },
 
   /** Paved yard between the gate and the main building. */
-  yard: { xMin: -40, xMax: 22, zMin: -24, zMax: 42 },
+  // The paved yard reaches from the main building's forecourt all the way east
+  // to the highway frontage, and from the shrine's south edge to the frontage
+  // road. A school campus of this size is almost entirely hard-paved; leaving
+  // a bare grass strip along the road is what made the gate look marooned.
+  yard: { xMin: -46, xMax: 46, zMin: -26, zMax: 45 },
 
   /* ------------------------------------------------------------- shrine */
   church: {
@@ -81,7 +85,9 @@ export const L = {
   },
 
   /* ---------------------------------------------------------- other blocks */
-  coveredCourt: { x: -20.0, z: 22.0, w: 32, d: 24 },
+  // The covered court sits on the south half of the campus, clear of the main
+  // gate axis so the approach to the 4-storey building stays open.
+  coveredCourt: { x: 6.0, z: 30.0, w: 30, d: 22 },
   market: { x: 30.0, z: 74.0, w: 30, d: 36 },
 
   /* ---------------------------------------------------- secondary campus */

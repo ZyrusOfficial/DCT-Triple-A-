@@ -197,7 +197,8 @@ export class World {
 
     /* --------------------------------------- covered court (behind DCT) */
     {
-      const cx = L.coveredCourt.x, cz = L.coveredCourt.z, W = 34, D = 26, H = 8.5;
+      const cx = L.coveredCourt.x, cz = L.coveredCourt.z;
+      const W = L.coveredCourt.w, D = L.coveredCourt.d, H = 8.5;
       for (let i = 0; i <= 6; i++) {
         const x = cx - W / 2 + (i * W) / 6;
         for (const sz of [-D / 2, D / 2]) {
@@ -239,7 +240,7 @@ export class World {
       const g = box(len + 0.6, 0.1, 3.2, 1.4);
       g.rotateY(-ang);
       g.translate((x0 + x1) / 2, h + 0.06, (z0 + z1) / 2);
-      b.addGeo(g, 'roofRib');
+      b.addGeo(g, 'walkwayRoof');
       // beams
       for (let i = 0; i <= n; i++) {
         const t = i / n;
@@ -250,11 +251,24 @@ export class World {
         b.addGeo(beam, 'paintCream');
       }
     };
-    walk(-18.0, 23.0, -52.0, 23.0);
-    walk(-52.0, 23.0, -96.0, 23.0);
-    walk(-52.0, 23.0, -52.0, 4.0);
-    walk(-52.0, 23.0, -60.0, 46.0);
-    walk(-88.0, 6.0, -88.0, -34.0);
+    /**
+     * Walkway routing, on the surveyed plan.
+     *
+     * The main spine runs from the gate drive west along the ceremonial axis to
+     * the covered court, then north to the main building's forecourt. A second
+     * run links the north side of the campus to the shrine's forecourt, which is
+     * how you actually walk from one to the other on site.
+     *
+     * These used to be hard-coded to the old (pre-survey) campus coordinates and
+     * cut straight through the 4-storey building.
+     */
+    const GZ = L.gate.z;
+    walk(L.gate.x - 6.0, GZ, -12.0, GZ);            // gate -> centre of the yard
+    walk(-12.0, GZ, -48.0, GZ);                     // centre -> building forecourt
+    walk(-48.0, GZ, -48.0, 24.0);                   // branch south past the court
+    walk(-12.0, GZ, -12.0, -22.0);                  // branch north to the shrine road
+    walk(-12.0, -22.0, -40.0, -22.0);               // across to the shrine approach
+    walk(-40.0, -22.0, -40.0, -30.0);               // down to the forecourt
 
     const signs = b.signs || [];
     b.buildInto(this.root, M);

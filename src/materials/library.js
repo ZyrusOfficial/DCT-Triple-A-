@@ -76,7 +76,11 @@ export function buildMaterials() {
   M.roofRib = STD({ map: T.ribbedRoof('#8a3a33'), roughness: 0.58, metalness: 0.22 });
   M.roofGray = STD({ map: T.ribbedRoof('#5c6166'), roughness: 0.55, metalness: 0.3 });
   M.roofRust = STD({ map: T.ribbedRoof('#7a4a30'), roughness: 0.72, metalness: 0.18 });
-  M.galv = STD({ map: T.galvanized(), color: 0x9aa2a8, roughness: 0.52, metalness: 0.45 });
+  M.walkwayRoof = STD({ map: T.ribbedRoof('#a8adad'), roughness: 0.62, metalness: 0.20 });
+  // Galvanised sheet. High metalness + a bright sky = a mirror that clips to
+  // white; real weathered galvanising is a dull grey with a broad highlight.
+  M.galv = STD({ map: T.galvanized(), color: 0x8b9296, roughness: 0.68, metalness: 0.22 });
+  M.galv.roofDull = true;
 
   /* ---------------------------------------------------------------- metal */
   M.ironDark = STD({ map: T.brushedMetal('#3a3f45', 0.4), roughness: 0.42, metalness: 0.72 });
