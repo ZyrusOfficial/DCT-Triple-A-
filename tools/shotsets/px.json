@@ -1,0 +1,6 @@
+[
+  { "name": "px-095", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{window.__app.post.exposure=0.62;return 'exp 0.62'})()" },
+  { "name": "px-050", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74,
+    "exec": "(()=>{window.__app.post.exposure=0.45;return 'exp 0.45'})()" }
+]

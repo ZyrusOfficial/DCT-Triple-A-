@@ -1,0 +1,4 @@
+[
+  { "name": "nrm", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const out=[];window.__app.scene.traverse(o=>{if(o.isMesh&&/^ground:(grass|granite|paving)$/.test(o.name)){const n=o.geometry.attributes.normal;let up=0,down=0,other=0;for(let i=0;i<n.count;i+=7){const y=n.getY(i);if(y>0.9)up++;else if(y<-0.9)down++;else other++;}out.push(o.name+' up='+up+' down='+down+' other='+other);}});return out.join(' | ')})()" }
+]

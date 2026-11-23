@@ -144,8 +144,9 @@ export function buildGround(parent, M) {
   /* --------------------------------------------------- SHRINE FORECOURT */
   const F = L.forecourt;
   b.addGeo(rect(F.xMin, F.zMin, F.xMax, F.zMax, 0.08, TEXSCALE.paving), 'pavingRed');
-  // granite apron immediately in front of the porch (church façade at X≈-48)
-  b.addGeo(rect(-46, -66, -30, -36, 0.092, TEXSCALE.paving), 'granite');
+  // granite apron in front of the porch (church façade at X≈-48), reaching out
+  // to meet the plaza promenade
+  b.addGeo(rect(-46, -70, -34, -32, 0.092, TEXSCALE.paving), 'granite');
   // garden strip between the shrine and the campus yard
   b.addGeo(rect(-70, -30, -30, -24, 0.085, TEXSCALE.grass), 'grass');
 
@@ -156,12 +157,12 @@ export function buildGround(parent, M) {
   b.addGeo(rect(px0, pz0, px1, pz1, 0.055, TEXSCALE.grass), 'grass');
   // Cross paths meeting at the fountain. The E–W promenade is deliberately
   // wide: it is the sightline from MacArthur Highway to the shrine façade.
-  b.addGeo(rect(P.cx - 2.6, pz0, P.cx + 2.6, pz1, 0.085, 3.2), 'paving');
-  b.addGeo(rect(px0, P.cz - 3.4, px1, P.cz + 3.4, 0.085, 3.2), 'paving');
+  b.addGeo(rect(P.cx - 2.6, pz0, P.cx + 2.6, pz1, 0.085, 3.2), 'pavingWarm');
+  b.addGeo(rect(px0, P.cz - 3.4, px1, P.cz + 3.4, 0.085, 3.2), 'pavingWarm');
   // paved link from the park across to the shrine forecourt
-  b.addGeo(rect(px0 - 26, P.cz - 3.4, px0, P.cz + 3.4, 0.086, 3.2), 'paving');
+  b.addGeo(rect(px0 - 26, P.cz - 3.4, px0, P.cz + 3.4, 0.086, 3.2), 'pavingWarm');
   // Central circular plaza
-  b.addGeo(disc(P.cx, P.cz, 10.0, 0.09, 2.8), 'paving');
+  b.addGeo(disc(P.cx, P.cz, 10.0, 0.09, 2.8), 'pavingWarm');
   b.addGeo(ringGeo(P.cx, P.cz, 10.0, 11.3, 0.095, 2.0), 'concreteTrim');
   // Perimeter walkway (a ring inset from the boundary)
   b.addGeo(rect(px0 + 2.0, pz0 + 2.0, px1 - 2.0, pz0 + 4.4, 0.08, 3.0), 'paving');

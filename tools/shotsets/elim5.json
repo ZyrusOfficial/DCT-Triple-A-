@@ -1,0 +1,4 @@
+[
+  { "name": "el5a", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='ground:grass'){o.material=new THREE.MeshBasicMaterial({color:0x226622});n++;}});return 'grass flat green '+n})()" }
+]

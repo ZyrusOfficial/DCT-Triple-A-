@@ -9,6 +9,7 @@ window.THREE = THREE;
 import { SkySystem } from './render/sky.js';
 import { PostFX } from './render/post.js';
 import { World } from './world/index.js';
+import { L } from './world/layout.js';
 import { Player } from './player/controller.js';
 
 const app = document.getElementById('app');
@@ -20,7 +21,12 @@ const state = {
   shadowLevel: 2,
   hour: 9.5,
   haze: 0.34,
-  exposure: 0.92,
+  // Exposure. The tropical sun here is brutal and every pale surface (granite,
+  // paving, granite kerbs) sat right at the ACES shoulder, so sunlit ground
+  // clipped to pure white while shaded ground read correctly — the classic
+  // "why is the pavement white" signature. 0.55 puts sunlit concrete at about
+  // 0.78 sRGB, which is what a photograph of this site actually looks like.
+  exposure: 0.55,
   ssao: true,
   bloom: true,
   fxaa: true,
@@ -101,7 +107,12 @@ async function boot() {
 
   player = new Player(camera, world);
   player.attach(renderer.domElement);
-  player.teleport([0, 0, 16], Math.PI, -0.03);
+  /**
+   * Spawn where a visitor actually arrives: on the campus driveway just inside
+   * the gate, facing west down the ceremonial axis toward the 4-storey building.
+   * (This used to be [0,0,16] — the middle of MacArthur Highway.)
+   */
+  player.teleport([L.gate.x - 4.0, 0, L.gate.z], Math.PI / 2, -0.02);
 
   applyQuality(state.quality);
   sky.setTime(state.hour);
@@ -324,11 +335,20 @@ function clearColliders() {
 }
 
 /* -------------------------------------------------------------- viewpoints */
+/**
+ * Spawn points, in the surveyed frame (+X east, +Z south).
+ * Each is a place you would actually stand on site, looking at the thing the
+ * chip is named after.
+ */
 const VIEWS = {
-  gate:    { pos: [0, 0, 14], look: [-30, 4, 10] },
-  church:  { pos: [-74, 0, 26], look: [-74, 7, 8] },
-  plaza:   { pos: [-46, 0, -38], look: [-46, 3, -62] },
-  aerial:  { pos: [-40, 0, -10], look: [-46, 0, -58], fly: true, flyPos: [-46, 52, -120] },
+  // On the driveway just inside the gate, facing west up the axis.
+  gate:    { pos: [L.gate.x - 4.0, 0, L.gate.z], look: [-60, 10, L.gate.z] },
+  // In the plaza looking west at the shrine façade.
+  church:  { pos: [-22, 0, -51], look: [-74, 9, -51] },
+  // In the plaza looking east across it toward the highway.
+  plaza:   { pos: [-20, 0, -66], look: [6, 4, -66] },
+  // Elevated overview.
+  aerial:  { pos: [-30, 0, -10], look: [-50, 0, -55], fly: true, flyPos: [-6, 44, 26] },
 };
 
 function gotoView(name) {

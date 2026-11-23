@@ -60,10 +60,16 @@ export function buildMaterials() {
   M.concreteDark = STD({ map: T.concreteSlab('#918c84', 4), roughness: 0.94 });
 
   M.paving = STD({ map: T.pavers('#998674'), roughness: 0.88 });
+  // Plaza paving: a warmer, slightly darker tan than the campus yard, so the
+  // town park reads differently from the school apron.
+  M.pavingWarm = STD({ map: T.pavers('#8a7159'), roughness: 0.9 });
   M.pavingRed = STD({ map: T.pavers('#8e6250'), roughness: 0.88 });
   M.tileRed = STD({ map: T.floorTile('#ab4f39', '#83735f'), roughness: 0.46, metalness: 0.02 });
   M.tileCream = STD({ map: T.floorTile('#cfc4ae', '#a89c88'), roughness: 0.46, metalness: 0.02 });
-  M.granite = STD({ map: T.graniteTile('#b9b2a6'), roughness: 0.5, metalness: 0.03 });
+  // Granite. #b9b2a6 at roughness 0.5 with a bright sky reads as pure white —
+  // it was the pale band across the shrine forecourt. Real plaza granite is a
+  // mid warm grey, and it needs to be rough enough to break up sky reflection.
+  M.granite = STD({ map: T.graniteTile('#8d867a'), roughness: 0.72, metalness: 0.02 });
 
   M.asphalt = STD({ map: T.asphalt(), roughness: 0.9, metalness: 0.0 });
   M.asphalt.userData.texScale = 9;

@@ -1,0 +1,4 @@
+[
+  { "name": "dbgp", "cam": [-22, 1.7, -51], "look": [-30, 0.1, -51], "fov": 74, "hour": 9.5,
+    "exec": "(()=>{const S=window.__app.scene;const ray=new THREE.Raycaster();const c=window.__app.camera;const out=[];ray.setFromCamera(new THREE.Vector2(0,-0.5),c);const h=ray.intersectObjects(S.children,true).filter(i=>i.object.isMesh&&i.object.visible);if(h.length){const o=h[0].object;const m=o.material;out.push('hit '+o.name+' mat='+m.type+' col=#'+m.color.getHexString()+' mapRepeat='+JSON.stringify(m.map?.repeat)+' uvAttr='+(o.geometry.attributes.uv?'yes':'no'));const bb=new THREE.Box3().setFromObject(o);out.push('bbox y='+bb.min.y.toFixed(3)+'..'+bb.max.y.toFixed(3));}return out.join(' | ')})()" }
+]
