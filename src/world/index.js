@@ -355,7 +355,39 @@ export class World {
         b.add(box(W + 1.0, 0.12, 0.14, 1), 'steel', { pos: [cx, H - 0.05, z] });
       }
       const roofParts = new THREE.Group();
-      b.add(box(W + 2.0, 0.14, D + 2.0, 2), 'galv', { pos: [cx, H + 0.2, cz] });
+      /**
+       * Pitched sheet roof on purlins.
+       *
+       * A single flat slab of galvanised sheet is the least convincing surface on
+       * the whole campus — covered courts in the Philippines are shallow-pitched
+       * long-run roofs on exposed steel, and that shallow pitch is exactly what
+       * makes them read correctly from a distance.
+       */
+      {
+        const RISE = 1.9;
+        const halfD = (D + 2.0) / 2;
+        const slope = Math.hypot(halfD, RISE);
+        const ang = Math.atan2(RISE, halfD);
+        for (const sz of [-1, 1]) {
+          // For the +Z panel the eave is at +halfD and the ridge at 0, so Y falls
+          // as Z rises: rotateX(+ang).
+          const g = new THREE.BoxGeometry(W + 2.0, 0.12, slope);
+          g.rotateX(sz * ang);
+          g.translate(cx, H + 0.2 + RISE / 2, cz + sz * (halfD / 2));
+          b.addGeo(g, 'galv');
+        }
+        // ridge cap and eave fascias
+        b.add(box(W + 2.2, 0.16, 0.3, 2), 'galv', { pos: [cx, H + 0.2 + RISE, cz] });
+        for (const sz of [-1, 1]) {
+          b.add(box(W + 2.2, 0.28, 0.14, 1), 'steel',
+            { pos: [cx, H + 0.16, cz + sz * halfD] });
+        }
+        // purlins visible from underneath
+        for (let i = 0; i <= 8; i++) {
+          const z = cz - D / 2 + (i * D) / 8;
+          b.add(box(W + 1.2, 0.12, 0.1, 1), 'steel', { pos: [cx, H - 0.02, z] });
+        }
+      }
       // low parapet
       for (const [dx, dz, w2, d2] of [[0, -D / 2 - 0.9, W + 2, 0.15], [0, D / 2 + 0.9, W + 2, 0.15],
                                       [-W / 2 - 0.9, 0, 0.15, D + 2], [W / 2 + 0.9, 0, 0.15, D + 2]]) {
@@ -428,7 +460,41 @@ export class World {
     const trees = new THREE.Group();
     trees.name = 'trees';
     this.root.add(trees);
+    /**
+     * Trees must not grow through a roof.
+     *
+     * Three did — at (-4,30), (12.5,34) and a palm at (-2,30) — all standing
+     * inside the covered court's footprint (x -9..21, z 19..41) and pushing up
+     * through its canopy. The court's steel posts and roof are built before the
+     * vegetation pass, so nothing was keeping the two apart.
+     *
+     * Rather than hand-moving each offender (and having the next one reappear),
+     * every candidate position is tested against a list of roofed footprints.
+     * Anything inside one is skipped with a console warning, so a misplaced tree
+     * shows up in the log instead of in a screenshot.
+     *
+     * The footprints are written from the surveyed layout, which is itself a trap:
+     * the main building carries rotY = +pi/2, so its 96 m long axis runs along
+     * world Z and not X. Writing it as 98 m wide in X swept up the whole shrine
+     * approach and rejected eleven perfectly good palms.
+     */
+    const roofed = [
+      { name: 'covered court', xMin: -9.6, xMax: 21.6, zMin: 18.4, zMax: 41.6 },
+      { name: 'north classroom block', xMin: 25.4, xMax: 40.6, zMin: -35.7, zMax: 3.6 },
+      { name: 'south classroom block', xMin: 26.4, xMax: 41.6, zMin: 7.4, zMax: 32.7 },
+      { name: 'lab wing', xMin: 33.3, xMax: 54.7, zMin: -40.6, zMax: -27.4 },
+      { name: 'shrine', xMin: -113, xMax: -47, zMin: -71, zMax: -32 },
+      // rotY = +pi/2: the 96 m long axis runs along world Z, not X.
+      { name: 'main building', xMin: -94.3, xMax: -77.7, zMin: -39.1, zMax: 57.9 },
+    ];
+    const blocked = [];
     const addTree = (spec) => {
+      const hit = roofed.find((r) =>
+        spec.x > r.xMin && spec.x < r.xMax && spec.z > r.zMin && spec.z < r.zMax);
+      if (hit) {
+        blocked.push([spec.x, spec.z, hit.name]);
+        return;
+      }
       const res = spec.palm
         ? kit.palm([spec.x, 0, spec.z], spec)
         : kit.broadleaf([spec.x, 0, spec.z], spec);
@@ -522,6 +588,10 @@ export class World {
     kit.build(trees);
     veg.build();
     this.vegetation = veg;
+    if (blocked.length) {
+      console.warn('[vegetation] skipped trees inside roofed areas:',
+        JSON.stringify(blocked));
+    }
     this.colliders.push(...kitColliders(this.treeColliders));
     this.colliders.push(...veg.colliders.filter((c) => (c.max.x - c.min.x) > 0.5));
   }
