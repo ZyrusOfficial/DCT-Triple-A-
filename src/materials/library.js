@@ -214,7 +214,10 @@ export function buildMaterials() {
   M.dctPink = STD({ color: 0xb8325a, roughness: 0.46, metalness: 0.05 });
   M.statue = STD({ color: 0xd9d2c4, roughness: 0.72, metalness: 0.02 });
   M.statueRobed = STD({ color: 0x1d1a18, roughness: 0.66, metalness: 0.03 });
-  M.gold = STD({ color: 0xb08a2e, roughness: 0.3, metalness: 0.92 });
+  M.gold = STD({
+    color: 0xc79a38, roughness: 0.3, metalness: 0.9,
+    emissive: 0x6e4e12, emissiveIntensity: 0.42,
+  });
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
   /* ------------------------------------------------------------ water etc */
@@ -226,6 +229,150 @@ export function buildMaterials() {
   for (const k of Object.keys(M)) {
     if (M[k].map) M[k].map.anisotropy = 8;
   }
+  /* ------------------------------------------------- DCT CLASSROOM BLOCKS */
+  /**
+   * The buildings flanking the gate are painted a cool blue-white with a deep
+   * blue band — not the cream used on the main 4-storey slab. Classic Philippine
+   * public-school palette, taken from the campus photographs.
+   */
+  M.dctBlueWall = STD({
+    map: T.stucco('#e8eef2', { seed: 44, dirt: 0.3 }), color: 0xdfe8ee,
+    roughness: 0.72, emissive: 0x1c2226, emissiveIntensity: 0.12,
+  });
+  M.dctBlueBand = STD({ map: T.stucco('#2f5f96', { seed: 45, dirt: 0.2 }), roughness: 0.66 });
+  M.dctBlueTrim = STD({ map: T.stucco('#f6f9fa', { seed: 46, dirt: 0.18 }), roughness: 0.6 });
+  // Blue pre-painted long-run sheet — the second colour these blocks read as.
+  M.dctRoofBlue = STD({ map: T.ribbedRoof('#2c4f7c'), roughness: 0.6, metalness: 0.18 });
+  /**
+   * Corridor soffits and walkway floors sit in permanent shade under the slab
+   * above, so they need the same interreflection stand-in the shrine interior
+   * uses or they render as a black tunnel.
+   */
+  M.dctTerrazzo = STD({
+    map: T.floorTile('#c9c2b4', '#a8a091'), roughness: 0.42, metalness: 0.03,
+    emissive: 0x2a2a28, emissiveIntensity: 0.26,
+  });
+  M.dctSoffit = STD({
+    map: T.stucco('#cfd6d8', { seed: 47, dirt: 0.35 }), roughness: 0.85,
+    emissive: 0x39414a, emissiveIntensity: 0.34,
+  });
+  M.windowGlassN = STD({
+    color: 0x2b3a44, roughness: 0.16, metalness: 0.55,
+    emissive: 0x18242c, emissiveIntensity: 0.4,
+  });
+
+  /* --------------------------------------------------- CLASSROOM FITTINGS */
+  // Enclosed rooms with no window in the light grid, so every one of these
+  // carries the emissive stand-in — otherwise the room renders as a black hole
+  // behind its own open door.
+  M.classroomFloor = STD({
+    map: T.floorTile('#b9a279', '#9b8659'), roughness: 0.5,
+    emissive: 0x2e2a22, emissiveIntensity: 0.30,
+  });
+  M.classroomCeil = STD({
+    map: T.stucco('#eef0ee', { seed: 48, dirt: 0.18 }), roughness: 0.9,
+    emissive: 0x3a3c3c, emissiveIntensity: 0.30,
+  });
+  M.classroomWall = STD({
+    map: T.stucco('#e8e4d6', { seed: 49, dirt: 0.3 }), roughness: 0.88,
+    emissive: 0x333029, emissiveIntensity: 0.28,
+  });
+  M.chalkboard = STD({
+    map: T.stucco('#2f4536', { seed: 50, dirt: 0.15 }), roughness: 0.72,
+    emissive: 0x121a14, emissiveIntensity: 0.34,
+  });
+  M.deskTop = STD({
+    map: T.wood('#9a7448'), roughness: 0.6,
+    emissive: 0x2a2014, emissiveIntensity: 0.28,
+  });
+  M.deskFrame = STD({ color: 0x6d7278, roughness: 0.55, metalness: 0.45 });
+  M.fluorescent = STD({
+    color: 0xf2f6ee, emissive: 0xe8f0e0, emissiveIntensity: 1.5, roughness: 0.4,
+  });
+  M.clockFace = STD({
+    color: 0xf4f2ea, roughness: 0.5, emissive: 0x8a8a80, emissiveIntensity: 0.3,
+  });
+
+  /* ------------------------------------------------------ SHRINE INTERIOR */
+  /**
+   * The nave is a closed masonry box: no sun, no skylight, and only two point
+   * lights inside it. Two lights cannot fill a room this size on their own, so
+   * every interior surface carries a small emissive term standing in for
+   * interreflection. That is a deliberate cheat, not an accident — without it
+   * the interior renders as a black cave.
+   *
+   * The ceiling boarding needs the strongest lift of all: it is lit only from
+   * below, shadowed by its own trusses, and is the largest bright surface in the
+   * room, so it dominates the tone curve.
+   */
+  M.sanctuaryFloor = STD({
+    map: T.graniteTile('#8a6c48'), color: 0xa89070, roughness: 0.62, metalness: 0.02,
+    emissive: 0x201a12, emissiveIntensity: 0.08,
+  });
+  M.carpetRed = STD({
+    map: T.stucco('#7d1d20', { seed: 73, dirt: 0.35 }), color: 0xd8b0b0,
+    roughness: 0.96, emissive: 0x4a1214, emissiveIntensity: 0.30,
+  });
+  M.interiorPlaster = STD({
+    map: T.stucco('#efe7d6', { seed: 5, dirt: 0.5 }), color: 0xc2cdd4,
+    roughness: 0.9, emissive: 0x5a6470, emissiveIntensity: 0.30,
+  });
+  M.interiorDado = STD({
+    map: T.wood('#4b2a14'), roughness: 0.62,
+    emissive: 0x201408, emissiveIntensity: 0.30,
+  });
+  // Piers reuse the rock map rather than regenerating a texture at a new hex —
+  // the memo key includes the hex, so a new tint means a whole new texture.
+  M.interiorPier = STD({
+    map: M.rockFace.map, color: 0x8a7f70, roughness: 0.85,
+    emissive: 0x2a2620, emissiveIntensity: 0.30,
+  });
+  M.altarDark = STD({
+    map: T.wood('#3a1a10'), roughness: 0.55,
+    emissive: 0x1e0f08, emissiveIntensity: 0.22,
+  });
+  M.altarNiche = STD({
+    map: T.stucco('#8e2a34', { seed: 71, dirt: 0.25 }), roughness: 0.7,
+    emissive: 0x2e0d12, emissiveIntensity: 0.28,
+  });
+  M.goldCross = STD({
+    color: 0xe8c063, roughness: 0.26, metalness: 0.9,
+    emissive: 0x8a6418, emissiveIntensity: 0.55,
+  });
+  M.goldRay = STD({
+    color: 0xf2d288, roughness: 0.22, metalness: 0.9,
+    emissive: 0x7a5a1c, emissiveIntensity: 0.55,
+  });
+  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.28, metalness: 0.04 });
+  M.altarCloth = STD({ map: T.stucco('#f0ece0', { seed: 74, dirt: 0.15 }), roughness: 0.85, emissive: 0x4a4840, emissiveIntensity: 0.2 });
+  M.candleWax = STD({ color: 0xf2ead6, roughness: 0.6, emissive: 0x4a4430, emissiveIntensity: 0.25 });
+  M.pewWood = STD({
+    map: T.wood('#6e4a2c'), roughness: 0.62,
+    emissive: 0x2e1f12, emissiveIntensity: 0.35,
+  });
+  /**
+   * Ceiling boarding. The emissive is deliberately strong AND neutral: it is
+   * the brightest large surface in the nave and is only ever lit from below, so
+   * a weak or warm emissive turns the whole roof into a tan-brown mass and
+   * destroys the contrast against the dark timber trusses.
+   */
+  M.ceilingBoard = STD({
+    map: T.wood('#eef2f4'), roughness: 0.92, color: 0xffffff,
+    emissive: 0xd6dade, emissiveIntensity: 0.62,
+  });
+  // Trusses must stay DARK against that boarding — that contrast is the whole
+  // read of an exposed-truss roof.
+  M.trussWood = STD({
+    map: T.wood('#3a1f0e'), color: 0x5a4331, roughness: 0.8,
+    emissive: 0x120c06, emissiveIntensity: 0.05,
+  });
+  M.windowGlow = STD({
+    color: 0xfff4d8, emissive: 0xfff0cc, emissiveIntensity: 1.6, roughness: 0.4,
+  });
+  M.lampGlow = STD({
+    color: 0xfff2d0, emissive: 0xffe9b8, emissiveIntensity: 1.1, roughness: 0.35,
+  });
+
   return M;
 }
 

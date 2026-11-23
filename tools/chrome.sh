@@ -2,18 +2,24 @@
 # Starts (or restarts) the headless Chromium used for verification screenshots.
 # WebGL2 is provided by SwiftShader (CPU) — slow, but pixel-identical for
 # geometry/lighting checks.
+#
+# Layout under /tmp/chr (rebuilt each session, does not persist):
+#   bin_chromium              the browser binary
+#   libs/lib                  glibc-adjacent shared objects (nss, nspr, ...)
+#   sw/                       SwiftShader: libEGL, libGLESv2, libvk_swiftshader
 set -e
-CHROME=${CHROME:-/tmp/chr/package/bin/chromium.out}
-LIBDIR=${LIBDIR:-/tmp/chr/root/lib}
+CHROME=${CHROME:-/tmp/chr/bin_chromium}
+LIBD=${LIBD:-/tmp/chr/libs/lib:/tmp/chr/sw}
 PORT=${CDP_PORT:-9333}
 PROFILE=${PROFILE:-/tmp/cdp/prof}
 
 pkill -f "remote-debugging-port=$PORT" 2>/dev/null || true
 sleep 0.4
 rm -rf "$PROFILE"
-mkdir -p "$PROFILE"
+mkdir -p "$PROFILE" /tmp/cdp
 
-setsid env LD_LIBRARY_PATH="$LIBDIR" "$CHROME" \
+setsid env LD_LIBRARY_PATH="$LIBD" VK_ICD_FILENAMES=/tmp/chr/sw/vk_swiftshader_icd.json \
+  "$CHROME" \
   --headless=old --no-sandbox --no-zygote \
   --disable-crash-reporter --disable-breakpad --disable-dev-shm-usage \
   --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader \

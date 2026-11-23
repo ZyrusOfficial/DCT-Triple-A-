@@ -10,6 +10,7 @@ import { buildGround, rect, disc } from './ground.js';
 import { buildChurch, CHURCH } from './church.js';
 import { buildMainBuilding, MAIN } from './dct-main.js';
 import { buildGate, GATE } from './gate.js';
+import { classroomBlock } from './dct-blocks.js';
 import { Vegetation } from './vegetation.js';
 import { TreeKit } from './trees.js';
 import { put } from './place.js';
@@ -56,6 +57,41 @@ export class World {
     onProgress(0.48, 'framing the main building');
     const main = buildMainBuilding(this.root, M);
     this.colliders.push(...main.colliders);
+
+    /**
+     * Classroom blocks flanking the gate.
+     *
+     * The campus photographs show these as the dominant frontage element:
+     * blue-and-white buildings with OPEN CORRIDORS facing the road, a deep blue
+     * band at each floor line and blue sheet roofs. They stand either side of
+     * the entrance drive, set back enough to leave the gate forecourt open.
+     *
+     * Corridors face WEST, toward the gate and the highway, so the open walkways
+     * are the first thing you see coming through the gate — which is the view in
+     * the reference photographs.
+     */
+    {
+      const blocks = [
+        // North of the gate, running N-S along the frontage.
+        { x: 33.0, z: -16.0, rotY: -Math.PI / 2, len: 36, depth: 13, floors: 3, floorH: 3.6 },
+        // South of the gate, shorter — the covered court takes the ground further south.
+        { x: 34.0, z: 20.0, rotY: -Math.PI / 2, len: 22, depth: 13, floors: 2, floorH: 3.7 },
+        // A laboratory wing set back behind the north block.
+        { x: 44.0, z: -34.0, rotY: Math.PI, len: 18, depth: 11, floors: 2, floorH: 3.6 },
+      ];
+      for (const o of blocks) {
+        // A fresh builder per block: Builder merges everything in its bins into
+        // one mesh per material, so sharing one across blocks would fuse them.
+        const bl = new Builder(`block-${o.x}`);
+        classroomBlock(bl, M, { ...o, corridor: 1 });
+        const bg = new THREE.Group();
+        bg.name = `dct-block-${o.x}`;
+        this.root.add(bg);
+        bl.buildInto(bg, M);
+        // Colliders come back in world space, like every other structure's.
+        this.colliders.push(...bl.colliders);
+      }
+    }
 
     onProgress(0.62, 'setting the gate');
     const gate = buildGate(this.root, M);

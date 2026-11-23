@@ -19,6 +19,7 @@
  *     porch on a moulded plinth.
  */
 import * as THREE from 'three';
+import { buildChurchInterior } from './church-interior.js';
 import { Builder, box, plane, cylinder, sphere, wallWithOpenings, windowUnit,
          column, railingLine, gableRoof, dome, cross, TEXSCALE } from './kit.js';
 import { put } from './place.js';
@@ -506,7 +507,22 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
      * X is the nave WIDTH and Z is the nave LENGTH here; swapping them produced
      * a slab projecting past the church on all four sides.
      */
-    b.add(box(NW - 0.6, 0.16, NL - 0.6, 2), 'soffitPanel', { pos: [0, WH - 0.28, 0] });
+    /**
+     * NO FLAT NAVE CEILING HERE.
+     *
+     * There used to be one at WH - 0.28 and it was why the nave never showed its
+     * roof: the interior builds a pitched boarded ceiling over exposed scissor
+     * trusses whose ridge is well above the wall head, so a slab at wall-plate
+     * level sealed it off completely. Every "why are the trusses invisible"
+     * investigation was looking at THIS slab, through the shell's material.
+     *
+     * Found by casting a ray straight up from the nave floor: the first hit was
+     * church:soffitPanel at 9.59 m, ahead of church-interior:trussWood at
+     * 13.18 m and the interior boarding above that.
+     *
+     * The nave is closed by the pitched ceiling in church-interior.js and by the
+     * roof structure outside it, so nothing is open to the sky.
+     */
   }
 
   /* ---------------------------------------------------------------- BUILD */
@@ -530,6 +546,28 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
   b.signs = undefined;
   b.buildInto(group, M);
   for (const s of signs) group.add(s);
+
+  /**
+   * Interior, parented to the body group so it inherits the survey position and
+   * the +pi/2 yaw. Built after the shell so it can sit inside it.
+   */
+  const interior = buildChurchInterior(group, M, {
+    naveW: NW, naveL: NL, wallH: WH, gableRise: CHURCH.gableRise,
+  });
+
+  /**
+   * Two interior point lights only. A closed masonry box gets no sun and no
+   * skylight, and each extra point light multiplies shader permutations for
+   * every material in the scene — so the interreflection stand-in on the
+   * interior materials does the rest.
+   */
+  const naveLight = new THREE.PointLight(0xfffaf2, 32, 48, 1.25);
+  naveLight.position.set(0, WH - 3.0, 4.0);
+  const altarLight = new THREE.PointLight(0xfff2dd, 28, 28, 1.4);
+  altarLight.position.set(0, WH - 2.4, -NL / 2 + 4.0);
+  group.add(naveLight, altarLight);
+  churchLights.push(naveLight, altarLight);
+
   for (const l of churchLights) group.add(l);
 
   // Colliders: the plinth's own colliders are world-space already relative to
@@ -538,7 +576,7 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     ...bp.colliders.map((c) => shiftBox(c, CHURCH.x, 0, CHURCH.z, CHURCH.rotY)),
     ...b.colliders.map((c) => shiftBox(c, CHURCH.x, PLINTH, CHURCH.z, CHURCH.rotY)),
   ];
-  return { group, plinthGroup, builder: b, colliders, lights: churchLights };
+  return { group, plinthGroup, builder: b, colliders, lights: churchLights, interior };
 }
 
 /** Rotate an AABB corners by yaw and translate; returns a new AABB. */
