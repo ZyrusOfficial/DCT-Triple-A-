@@ -114,6 +114,24 @@ export function buildMaterials() {
   M.concrete = STD({ map: T.concreteSlab('#b7b2a8', 3), roughness: 0.9 });
   M.concreteTrim = STD({ map: T.concreteSlab('#cdc8bd', 1), roughness: 0.8 });
   M.concreteDark = STD({ map: T.concreteSlab('#918c84', 4), roughness: 0.94 });
+  /**
+   * Basin liners and any other surface inside a concave well.
+   *
+   * The fountain basin's inner wall is a vertical cylinder facing away from the
+   * sun at every hour, with nothing above it but sky — so at roughness 0.94 it
+   * rendered near-black and the whole fountain read as a black bowl of blue
+   * paint. Real basin walls are tiled pale and are the brightest thing in the
+   * well. This is deliberately albedo-heavy and slightly emissive rather than a
+   * roughness tweak, because the problem is total absence of light, not gloss.
+   *
+   * floorTile(hex, groutHex) — no options object; repeats come from the
+   * geometry's UV scale, not the texture call.
+   */
+  M.basinLiner = STD({
+    map: T.floorTile('#d8d2c4', '#b8b0a0'),
+    roughness: 0.62,
+    emissive: 0x6a6558, emissiveIntensity: 0.30,
+  });
 
   M.paving = STD({ map: T.pavers('#998674'), roughness: 0.88 });
   // Plaza paving: a warmer, slightly darker tan than the campus yard, so the
@@ -281,9 +299,20 @@ export function buildMaterials() {
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
   /* ------------------------------------------------------------ water etc */
+  /**
+   * Water.
+   *
+   * With roughness 0.06 and no normal map this was a mirror: under a featureless
+   * sky dome there is nothing to reflect, so every basin and pool on the campus
+   * read as a flat sheet of opaque blue paint. Water reads as water through its
+   * broken, glinting surface — so the fix is ripples, and a slightly rougher
+   * surface that catches the sky as broken highlights instead of one flat value.
+   */
   M.water = new THREE.MeshStandardMaterial({
-    color: 0x6d8fa3, roughness: 0.06, metalness: 0.1,
-    transparent: true, opacity: 0.82, envMapIntensity: 1.6,
+    color: 0x4e7f96, roughness: 0.14, metalness: 0.06,
+    normalMap: T.waterNormals(),
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    transparent: true, opacity: 0.72, envMapIntensity: 2.1,
   });
 
   for (const k of Object.keys(M)) {

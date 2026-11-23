@@ -761,6 +761,46 @@ export { valueNoise };
  * Sobel gradients over the height field, packed to RGB. `strength` scales the
  * slope, so a subtle stucco grain and a deep rock face can share this.
  */
+/**
+ * Ripple normal map for standing water.
+ *
+ * Water in the fountains and the gate pool had no map at all — a smooth
+ * MeshStandardMaterial with roughness 0.06, which under a plain sky dome has
+ * nothing to reflect and so reads as a flat sheet of blue paint. Real water
+ * reads as water almost entirely through its broken, glinting surface, so the
+ * cheapest convincing fix is a normal map, not a more complicated shader.
+ *
+ * Interference of a few sines at unrelated angles and periods, so the pattern
+ * does not repeat visibly at the small scale water is tiled at.
+ */
+export function waterNormals() {
+  return memo('waterN', () => {
+    const S = 256;
+    const h = new Float32Array(S * S);
+    // angle, cycles across the tile, amplitude
+    const waves = [
+      [0.0, 3, 1.0], [0.9, 5, 0.62], [2.1, 2, 0.74], [3.4, 7, 0.38], [5.2, 4, 0.5],
+    ];
+    for (let j = 0; j < S; j++) {
+      for (let i = 0; i < S; i++) {
+        const u = i / S, v = j / S;
+        let a = 0;
+        for (const [ang, cyc, amp] of waves) {
+          const k = cyc * Math.PI * 2;
+          a += amp * Math.sin(k * (Math.cos(ang) * u + Math.sin(ang) * v));
+        }
+        h[j * S + i] = a;
+      }
+    }
+    const c = normalFromHeight(h, S, S, 0.055);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(3, 3);
+    t.anisotropy = 4;
+    return t;
+  });
+}
+
 export function normalFromHeight(h, w, sv, strength = 2.0) {
   const c = document.createElement('canvas');
   c.width = w; c.height = sv;

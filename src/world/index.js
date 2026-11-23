@@ -157,8 +157,43 @@ export class World {
     // small is what makes the shrine behind it read tall.
     const RB = 3.1;
     b.add(cylinder(RB + 0.42, RB + 0.55, 0.42, 8), 'concreteTrim', { pos: [PX, 0.21, PZ], collide: true });
-    b.add(cylinder(RB, RB, 0.3, 8), 'concreteDark', { pos: [PX, 0.55, PZ] });
-    b.add(cylinder(RB - 0.28, RB - 0.28, 0.05, 8), 'water', { pos: [PX, 0.68, PZ] });
+    // Lined with pale tile: a bare concreteDark cylinder faces away from the sun
+    // all day and renders as a black well. See M.basinLiner.
+    b.add(cylinder(RB, RB, 0.30, 8), 'basinLiner', { pos: [PX, 0.55, PZ] });
+    /**
+     * Coping, as an ANNULUS and not a disc.
+     *
+     * A solid cylinder here is a lid: it caps the basin and the water goes
+     * invisible. RingGeometry is flat in XY, so rotateX(-pi/2) lays it down as a
+     * horizontal ring.
+     */
+    {
+      const coping = new THREE.RingGeometry(RB - 0.20, RB + 0.02, 8, 1);
+      coping.rotateX(-Math.PI / 2);
+      coping.translate(PX, 0.755, PZ);
+      b.addGeo(coping, 'concreteTrim');
+      /**
+       * Outer fascia, open at both ends.
+       *
+       * The kit's `cylinder()` has no openEnded flag, and a capped cylinder here
+       * is a LID: a solid disc across the whole basin at y 0.70, which hid the
+       * water a second time (the first being the liner's own top cap). A raw
+       * CylinderGeometry with openEnded = true is the only way to get a rim that
+       * does not close over the bowl.
+       */
+      const fascia = new THREE.CylinderGeometry(RB + 0.04, RB + 0.06, 0.16, 8, 1, true);
+      fascia.translate(PX, 0.70, PZ);
+      b.addGeo(fascia, 'concreteTrim');
+    }
+    /**
+     * Water surface ABOVE the liner's top cap.
+     *
+     * The liner is a capped cylinder, so its top face at y 0.70 is a solid
+     * concrete lid across the whole basin — water placed under it is invisible
+     * and the fountain reads as an empty pale bowl. The surface belongs a few
+     * centimetres above the liner rim, just under the coping.
+     */
+    b.add(cylinder(RB - 0.22, RB - 0.22, 0.04, 8), 'water', { pos: [PX, 0.735, PZ] });
     // central pedestal + one shallow bowl
     b.add(cylinder(0.44, 0.62, 0.95, 12), 'concreteTrim', { pos: [PX, 1.12, PZ] });
     b.add(cylinder(1.15, 1.22, 0.11, 20), 'concreteTrim', { pos: [PX, 1.62, PZ] });
