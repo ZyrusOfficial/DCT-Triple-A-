@@ -1,7 +1,0 @@
-[
-  { "name": "site-map",   "cam": [-30, 165, 10], "look": [-30, 0, -40], "fov": 62, "hour": 15.5 },
-  { "name": "site-gate",  "cam": [14, 2.0, 2],   "look": [2, 4, -6],   "fov": 74, "hour": 15.5 },
-  { "name": "site-dct",   "cam": [10, 2.0, 9.4], "look": [-50, 12, 9.4], "fov": 76, "hour": 15.5 },
-  { "name": "site-plaza", "cam": [-2, 2.0, -30], "look": [-40, 5, -62], "fov": 78, "hour": 15.5 },
-  { "name": "site-wide",  "cam": [70, 40, 60],   "look": [-60, 6, -40], "fov": 60, "hour": 15.5 }
-]

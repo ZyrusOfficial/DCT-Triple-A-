@@ -1,4 +1,0 @@
-[
-  { "name": "m11", "cam": [-30, 3.0, -66], "look": [-40, 0.2, -60], "fov": 50, "hour": 15.5,
-    "exec": "(()=>{const S=window.__app.scene;const ray=new THREE.Raycaster();const out=[];for(const [x,z] of [[-30,-66],[-36,-62],[-25,-70],[-20,-58]]){ray.set(new THREE.Vector3(x,40,z),new THREE.Vector3(0,-1,0));const h=ray.intersectObjects(S.children,true).filter(i=>i.object.isMesh&&i.object.visible);out.push('('+x+','+z+') '+h.slice(0,3).map(i=>i.object.name+'@y='+(40-i.distance).toFixed(2)).join(' > '));}return out.join(' | ')})()" }
-]

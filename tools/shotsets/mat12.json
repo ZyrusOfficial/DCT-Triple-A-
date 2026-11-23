@@ -1,4 +1,0 @@
-[
-  { "name": "m12", "cam": [-30, 3.0, -66], "look": [-40, 0.2, -60], "fov": 50, "hour": 15.5,
-    "exec": "(()=>{const S=window.__app.scene;const found=[];S.traverse(o=>{if(o.isMesh&&o.name==='ground:concreteTrim')found.push(o);});if(!found.length)return 'no ground:concreteTrim';const o=found[0];const bb=new THREE.Box3().setFromObject(o);const p=o.geometry.attributes.position;let ymin=1e9,ymax=-1e9,xmin=1e9,xmax=-1e9;for(let i=0;i<p.count;i++){ymin=Math.min(ymin,p.getY(i));ymax=Math.max(ymax,p.getY(i));xmin=Math.min(xmin,p.getX(i));xmax=Math.max(xmax,p.getX(i));}return 'meshes='+found.length+' tri='+(p.count/3)+' bboxX['+bb.min.x.toFixed(0)+','+bb.max.x.toFixed(0)+'] Y['+bb.min.y.toFixed(2)+','+bb.max.y.toFixed(2)+'] Z['+bb.min.z.toFixed(0)+','+bb.max.z.toFixed(0)+'] localY['+ymin.toFixed(2)+','+ymax.toFixed(2)+']'})()" }
-]
