@@ -312,9 +312,19 @@ export function buildMaterials() {
     map: T.floorTile('#c9c2b4', '#a8a091'), roughness: 0.42, metalness: 0.03,
     emissive: 0x2a2a28, emissiveIntensity: 0.26,
   });
+  /**
+   * Corridor soffit.
+   *
+   * This was near-white (#cfd6d8) with a strong blue-grey emissive, and in every
+   * open-corridor view the ceiling panels blew out to the same value as the sky —
+   * so the walkways read as open voids with sky showing through the floors.
+   * A soffit under a slab is in shadow: it should be the darkest surface in the
+   * corridor, and the lighting that makes the walkway readable comes from the
+   * fittings hung under it, not from the soffit glowing.
+   */
   M.dctSoffit = STD({
-    map: T.stucco('#cfd6d8', { seed: 47, dirt: 0.35 }), roughness: 0.85,
-    emissive: 0x39414a, emissiveIntensity: 0.34,
+    map: T.stucco('#8d9497', { seed: 47, dirt: 0.45 }), roughness: 0.88,
+    emissive: 0x1d2226, emissiveIntensity: 0.16,
   });
   M.windowGlassN = STD({
     color: 0x2b3a44, roughness: 0.16, metalness: 0.55,

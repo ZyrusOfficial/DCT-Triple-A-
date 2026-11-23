@@ -555,19 +555,31 @@ export function dctCrest() {
     x.clearRect(0, 0, S, S);
     x.translate(S / 2, S / 2);
     // Shield
-    x.fillStyle = '#f2ece0'; x.strokeStyle = '#7d1428'; x.lineWidth = 10;
+    x.fillStyle = '#8f1c2c'; x.strokeStyle = '#5d0f1e'; x.lineWidth = 14;
     x.beginPath();
     x.moveTo(0, -190); x.bezierCurveTo(120, -190, 160, -120, 160, -40);
     x.bezierCurveTo(160, 90, 80, 160, 0, 200);
     x.bezierCurveTo(-80, 160, -160, 90, -160, -40);
     x.bezierCurveTo(-160, -120, -120, -190, 0, -190);
     x.closePath(); x.fill(); x.stroke();
-    // Dominican cross (black & white)
-    x.fillStyle = '#1a1a1a';
-    x.fillRect(-22, -150, 44, 300);
-    x.fillRect(-110, -66, 220, 44);
+    /**
+     * Dominican cross (black & white).
+     *
+     * Strokes are deliberately heavy: the shield is viewed from the highway at
+     * 20 m+, where a 44 px arm is under a pixel and the whole crest averages to a
+     * pale smear. 80 px arms with gold bolt heads give it something to read as at
+     * any range.
+     */
+    x.fillStyle = '#141414';
+    x.fillRect(-40, -178, 80, 356);
+    x.fillRect(-136, -84, 272, 68);
     x.fillStyle = '#f2ece0';
-    x.fillRect(-22, -150, 44, 60);
+    x.fillRect(-40, -178, 80, 104);
+    // bolt heads, so the plate reads as metal hardware at any range
+    x.fillStyle = '#c9a227';
+    for (const [bx, by] of [[-118, -150], [118, -150], [-118, 150], [118, 150]]) {
+      x.beginPath(); x.arc(bx, by, 13, 0, Math.PI * 2); x.fill();
+    }
     // Sunburst
     x.strokeStyle = '#c9a227'; x.lineWidth = 5;
     for (let i = 0; i < 12; i++) {
