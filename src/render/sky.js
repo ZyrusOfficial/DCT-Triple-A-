@@ -31,15 +31,25 @@ export function sunAngles(hour, lat = SITE_LAT, dayOfYear = 150) {
   return { elevation: el, azimuth: az, declination: decl };
 }
 
-/** Sun colour ramp from horizon-red to high-noon white. */
+/**
+ * Sun colour and intensity against elevation.
+ *
+ * The intensity here is not physical irradiance — it is the value that looks
+ * right through ACES after the sky's own brightness is accounted for. What
+ * matters for believability is that a low sun is still a *strong* light with a
+ * warm colour: the atmosphere reddens it and cuts it, but it does not turn it
+ * off. An earlier ramp dropped to 5.5 at 4° while the sky was still fully lit,
+ * which produced a bright sky with no shadows and flat, washed-out ground.
+ */
 const SUN_RAMP = [
-  { e: -3, c: new THREE.Color(0xff5a1e), i: 0.0 },
-  { e: 0, c: new THREE.Color(0xff7b33), i: 2.3 },
-  { e: 4, c: new THREE.Color(0xffa057), i: 5.5 },
-  { e: 10, c: new THREE.Color(0xffca8c), i: 8.5 },
-  { e: 25, c: new THREE.Color(0xfff0d6), i: 11.5 },
-  { e: 45, c: new THREE.Color(0xfffaee), i: 13.0 },
-  { e: 75, c: new THREE.Color(0xffffff), i: 14.0 },
+  { e: -2.0, c: new THREE.Color(0xff5a1e), i: 0.0 },
+  { e: 0.0, c: new THREE.Color(0xff7a3a), i: 1.7 },
+  { e: 3.0, c: new THREE.Color(0xff9a55), i: 3.7 },
+  { e: 8.0, c: new THREE.Color(0xffbb80), i: 5.0 },
+  { e: 16.0, c: new THREE.Color(0xffd9ae), i: 5.9 },
+  { e: 30.0, c: new THREE.Color(0xfff2dd), i: 6.6 },
+  { e: 50.0, c: new THREE.Color(0xfffaf1), i: 7.1 },
+  { e: 80.0, c: new THREE.Color(0xffffff), i: 7.4 },
 ];
 function sampleRamp(e) {
   let a = SUN_RAMP[0], b = SUN_RAMP[SUN_RAMP.length - 1];
@@ -107,15 +117,15 @@ void main() {
   // ---- Mie halo: wide wash + narrow aureole --------------------------------
   float wide = pow(max(cosSun, 0.0), 5.0);
   float tight = pow(max(cosSun, 0.0), 260.0);
-  col += uSunColor * wide * 0.40 * uHaze;
-  col += uSunColor * tight * 2.2;
+  col += uSunColor * wide * 0.22 * uHaze;
+  col += uSunColor * tight * 0.55;
 
   // ---- Solar disc ----------------------------------------------------------
   float ang = acos(cosSun);
   float r = ang / max(uSunAngRadius, 1e-6);
   float limb = mix(0.55, 1.0, sqrt(max(0.0, 1.0 - min(r * r, 1.0))));
   float disc = (1.0 - smoothstep(0.86, 1.0, r)) * limb;
-  col += uSunColor * disc * 42.0 * (1.0 - uNight);
+  col += uSunColor * disc * 60.0 * (1.0 - uNight);
 
   // ---- Below the horizon ---------------------------------------------------
   float below = smoothstep(0.0, -0.10, h);
@@ -144,7 +154,9 @@ export class SkySystem {
       uGround: { value: new THREE.Color(0x6e7c74) },
       uSunColor: { value: new THREE.Color(0xfff0d8) },
       uHaze: { value: 0.34 },
-      uSunAngRadius: { value: 0.0092 },
+      // True solar angular radius is 0.266 deg = 0.00464 rad. Anything much
+      // larger reads as a glowing balloon rather than the sun.
+      uSunAngRadius: { value: 0.0047 },
       uNight: { value: 0.0 },
     };
 
@@ -233,12 +245,16 @@ export class SkySystem {
     // Sky palette by elevation. High sun → deep blue; low sun → warm horizon.
     const day = THREE.MathUtils.smoothstep(el, -6, 12);
     const golden = THREE.MathUtils.smoothstep(el, 0, 22);
-    const zenith = new THREE.Color(0x0a1c42).lerp(new THREE.Color(0x1f5fb8), day);
-    zenith.lerp(new THREE.Color(0x3f7cc4), golden * 0.3);
-    const horizon = new THREE.Color(0x1a1c28)
-      .lerp(new THREE.Color(0xffb27a), 1 - golden)
-      .lerp(new THREE.Color(0xc2d9ef), golden);
-    const ground = new THREE.Color(0x1c1c22).lerp(new THREE.Color(0x8d8a76), day * 0.85);
+    // Sky palette. `golden` is 0 at/below the horizon and 1 well above it, so
+    // the warm horizon band has to be driven by (1 - golden) but must never let
+    // the zenith collapse to black while the sun is still up.
+    const zenith = new THREE.Color(0x14284f)          // dusk navy
+      .lerp(new THREE.Color(0x1d5cb4), day)           // full daytime blue
+      .lerp(new THREE.Color(0x4a7fc0), (1 - golden) * 0.22);
+    const horizon = new THREE.Color(0x2a2a36)         // dusk
+      .lerp(new THREE.Color(0xffc08a), (1 - golden) * 0.92)  // warm band
+      .lerp(new THREE.Color(0xcfe3f5), golden * 0.85);
+    const ground = new THREE.Color(0x232326).lerp(new THREE.Color(0x9a9682), day * 0.9);
     this.uniforms.uZenith.value.copy(zenith);
     this.uniforms.uHorizon.value.copy(horizon);
     this.uniforms.uGround.value.copy(ground);
@@ -257,13 +273,15 @@ export class SkySystem {
      * holes punched in the render. Shadowed concrete outdoors is roughly a fifth
      * of sunlit concrete, not a hundredth.
      */
-    this.fill.intensity = 0.30 + day * 0.85;
+    this.fill.intensity = 0.34 + day * 0.78;
     this.fill.color.copy(new THREE.Color(0x2a3a58).lerp(new THREE.Color(0xcfe3f7), day));
     this.fill.groundColor.copy(new THREE.Color(0x22201c).lerp(new THREE.Color(0xa39684), day));
     this.ambient.intensity = 0.05 + day * 0.14;
 
     // Shadow strength: hard at noon, softer at golden hour.
-    this.sun.shadow.radius = 1.2 + (1 - golden) * 2.4;
+    // Softer and longer shadows at low sun, but they never disappear.
+    this.sun.shadow.radius = 1.0 + (1 - golden) * 1.8;
+    this.sun.shadow.bias = -0.0004 - (1 - golden) * 0.0006;
 
     // Fog matches the horizon so distant geometry dissolves instead of popping.
     // Capas has real haze, but at ground level it only reads beyond ~300 m —
@@ -282,7 +300,7 @@ export class SkySystem {
     if (this.envRT) this.envRT.dispose();
     this.envRT = this.pmrem.fromScene(this.envScene, 0.04, 1, 400);
     this.scene.environment = this.envRT.texture;
-    this.scene.environmentIntensity = 1.35;
+    this.scene.environmentIntensity = 1.55;
   }
 
   setShadowQuality(level) {
