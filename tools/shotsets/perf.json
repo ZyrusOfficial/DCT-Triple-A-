@@ -1,4 +1,0 @@
-[
-  { "name": "perf", "cam": [26, 1.7, -12], "look": [33, 4, -16], "fov": 84, "hour": 8,
-    "exec": "(()=>{const W=window.__app.world;return JSON.stringify({build:W.stats.buildMs,timings:W.stats.timings||null})})()" }
-]

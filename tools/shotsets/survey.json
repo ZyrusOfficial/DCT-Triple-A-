@@ -1,0 +1,8 @@
+[
+  { "name": "s-plaza",  "cam": [-20, 2.0, -66], "look": [6, 4, -66],   "fov": 78, "hour": 15 },
+  { "name": "s-muni",   "cam": [10, 2.0, -60],  "look": [52, 8, -60],  "fov": 76, "hour": 15 },
+  { "name": "s-main",   "cam": [-30, 8, 9],     "look": [-86, 14, 9],  "fov": 70, "hour": 15 },
+  { "name": "s-spawn",  "cam": [17.5, 1.7, -6], "look": [40, 6, -10],  "fov": 80, "hour": 15 },
+  { "name": "s-court",  "cam": [-4, 3, 46],     "look": [16, 6, 26],   "fov": 80, "hour": 15 },
+  { "name": "s-aerial", "cam": [-6, 50, 30],    "look": [-45, 6, -30], "fov": 58, "hour": 15 }
+]

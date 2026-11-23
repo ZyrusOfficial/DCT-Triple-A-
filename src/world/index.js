@@ -167,13 +167,23 @@ export class World {
     // small bronze finial — a saint's silhouette, not a giant ball
     b.add(cylinder(0.16, 0.22, 0.5, 10), 'statueRobed', { pos: [PX, 2.68, PZ] });
     b.add(sphere(0.11, 10), 'statue', { pos: [PX, 3.0, PZ] });
-    // hair-thin water jets, barely visible but they catch the light
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      put(b, cylinder(0.015, 0.03, 0.7, 4), 'water',
-        [PX + Math.cos(a) * 0.55, 2.05, PZ + Math.sin(a) * 0.55],
-        { rot: [Math.cos(a) * 0.22, 0, -Math.sin(a) * 0.22] });
+    /**
+     * Water: a thin curtain sheet, not tilted cylinders.
+     *
+     * The jets used to be six `put()` cylinders rotated about their own origins,
+     * which swings them bodily out of the basin — at 0.7 m long and 3 cm across
+     * they read as a giant pale tube spearing out across the plaza. A short
+     * falling sheet from the upper bowl to the lower basin is both cheaper and
+     * what a fountain of this size actually looks like.
+     */
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const rr = 0.88;
+      b.add(cylinder(0.012, 0.012, 0.9, 4), 'water',
+        { pos: [PX + Math.cos(a) * rr, 1.22, PZ + Math.sin(a) * rr] });
     }
+    // still water in the upper bowl, slightly domed
+    b.add(cylinder(0.86, 0.46, 0.08, 20), 'water', { pos: [PX, 1.75, PZ] });
 
     /* -------------------------------------------------- plaza lamp posts */
     const lampPositions = [];
