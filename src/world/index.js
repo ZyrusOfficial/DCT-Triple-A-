@@ -249,22 +249,84 @@ export class World {
     {
       const hx = L.municipal.x, hz = L.municipal.z - 8, W = 40, D = 16, H = 11.5;
       b.add(box(W, H, D, TEXSCALE.concrete), 'paintWhite', { pos: [hx, H / 2, hz], collide: true });
-      // portico columns
+      /**
+       * Portico: a free-standing colonnade standing clear of the wall.
+       *
+       * The columns used to sit at D/2 + 2.4 while the wall face is at D/2, so
+       * they were half-buried and the portico read as pilasters painted on a
+       * flat box. Pushed to +3.6 and given bases and capitals.
+       */
+      const PORCH_Z = hz + D / 2 + 3.6;
       for (let i = 0; i < 8; i++) {
         const x = hx - W / 2 + 3 + i * (W - 6) / 7;
-        const cp = cylinder(0.42, 0.46, 6.4, 14);
-        b.addGeo(cp.clone().translate(x, 3.2, hz + D / 2 + 2.4), 'paintWhite');
-        b.add(box(1.1, 0.3, 1.1, 1), 'paintWhite', { pos: [x, 0.15, hz + D / 2 + 2.4] });
+        // shaft
+        const cp = cylinder(0.40, 0.46, 6.3, 14);
+        b.addGeo(cp.clone().translate(x, 3.6, PORCH_Z), 'paintWhite');
+        // base and capital
+        b.add(box(1.16, 0.34, 1.16, 1), 'paintWhite', { pos: [x, 0.20, PORCH_Z] });
+        b.add(box(1.02, 0.26, 1.02, 1), 'paintWhite', { pos: [x, 6.55, PORCH_Z] });
+        // flute shadow: two thin dark strips per shaft read as fluting at distance
+        for (const q of [-1, 1]) {
+          b.add(box(0.05, 6.0, 0.05, 1), 'concreteDark',
+            { pos: [x + q * 0.30, 3.6, PORCH_Z + 0.34] });
+        }
       }
-      b.add(box(W + 1.2, 0.7, 5.4, 2), 'paintWhite', { pos: [hx, 6.9, hz + D / 2 + 2.0] });
-      // pediment
+      // porch roof beams spanning the colonnade
+      for (let i = 0; i < 8; i++) {
+        const x = hx - W / 2 + 3 + i * (W - 6) / 7;
+        b.add(box(0.28, 0.3, 4.2, 1), 'paintWhite', { pos: [x, 6.85, PORCH_Z - 1.3] });
+      }
+      b.add(box(W - 4.0, 0.26, 4.4, 2), 'paintWhite', { pos: [hx, 7.02, PORCH_Z - 1.4] });
+      /**
+       * Entablature and pediment.
+       *
+       * The colonnade stood 2.4 m proud of the wall but the columns were plain
+       * cylinders and the pediment was extruded in the wrong plane, so from the
+       * front the hall read as a blank white box with slots cut in it — no
+       * colonnade, no pediment, nothing civic.
+       *
+       * ExtrudeGeometry extrudes along +Z, so a Shape drawn in XY already faces
+       * the right way for a facade looking down +Z; the depth must be small and
+       * the whole thing placed at the front face.
+       */
+      b.add(box(W + 1.6, 0.8, 6.2, 2), 'paintWhite', { pos: [hx, 7.0, hz + D / 2 + 1.9] });
       const shape = new THREE.Shape();
-      shape.moveTo(-W / 2, 0); shape.lineTo(W / 2, 0); shape.lineTo(0, 3.4); shape.closePath();
-      const ped = new THREE.ExtrudeGeometry(shape, { depth: 1.0, bevelEnabled: false });
-      ped.translate(hx, 7.2, hz + D / 2 + 1.2);
+      shape.moveTo(-W / 2 - 0.8, 0);
+      shape.lineTo(W / 2 + 0.8, 0);
+      shape.lineTo(0, 3.6);
+      shape.closePath();
+      const ped = new THREE.ExtrudeGeometry(shape, { depth: 1.4, bevelEnabled: false });
+      ped.translate(hx, 7.4, hz + D / 2 + 1.4);
       b.addGeo(ped, 'paintWhite');
+      // raking cornice, so the pediment reads as a layered mass
+      for (const sgn of [-1, 1]) {
+        // Half-width and rise of ONE raking edge, so the cornice lies along the
+        // gable slope exactly and stops at the apex and the eave.
+        const halfW = W / 2 + 0.8;
+        const rise = 3.6;
+        const rake = new THREE.BoxGeometry(Math.hypot(halfW, rise) - 0.3, 0.36, 1.7);
+        rake.rotateZ(-sgn * Math.atan2(rise, halfW));
+        rake.translate(hx + sgn * halfW / 2, 7.4 + rise / 2 + 0.1, hz + D / 2 + 1.55);
+        b.addGeo(rake, 'paintWhite');
+      }
+      // tympanum relief: a small crest disc on the pediment face
+      {
+        // A cylinder's axis is +Y; rotateX(+pi/2) turns it to face +Z, which is
+        // the facade direction. rotateX(-pi/2) faces it backwards and it reads
+        // as a dark hole in the pediment.
+        const disc = new THREE.CylinderGeometry(0.8, 0.8, 0.18, 24);
+        disc.rotateX(Math.PI / 2);
+        disc.translate(hx, 8.55, hz + D / 2 + 2.9);
+        b.addGeo(disc, 'brass');
+        // raised rim so the disc reads as a medallion, not a painted spot
+        const rim = new THREE.TorusGeometry(0.82, 0.07, 6, 22);
+        rim.translate(hx, 8.55, hz + D / 2 + 3.0);
+        b.addGeo(rim, 'brass');
+      }
       // roof
-      b.add(box(W + 1.6, 0.5, D + 1.6, 2), 'roofGray', { pos: [hx, H + 0.2, hz] });
+      // Flat roof BEHIND the pediment only, so it cannot cut across the gable
+      // face. Sized to the body depth and pushed back.
+      b.add(box(W + 0.4, 0.5, D + 0.4, 2), 'roofGray', { pos: [hx, H + 0.2, hz - 0.9] });
       // windows
       for (let f = 0; f < 2; f++) {
         for (let i = 0; i < 9; i++) {
