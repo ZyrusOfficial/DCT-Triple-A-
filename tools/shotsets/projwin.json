@@ -1,0 +1,2 @@
+[{"name":"pw","cam":[-70,6,9.4],"look":[-80,8,9.4],"fov":76,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const o=[];for(const y of [4.5,8.4,12.3]){for(const z of [6,9.4,13]){const rc=new T.Raycaster(new T.Vector3(-70,y,z),new T.Vector3(-1,0,0));const h=rc.intersectObjects(S.children,true).filter(x=>x.object.name.startsWith('main'));o.push('y'+y+',z'+z+' -> '+(h[0]?h[0].object.name.replace('main:','')+'@x'+h[0].point.x.toFixed(1):'none'));}}return JSON.stringify(o)})()"}]

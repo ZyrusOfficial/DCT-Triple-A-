@@ -235,7 +235,16 @@ export function buildMainBuilding(parent, M, opts = {}) {
    * `EZ - n` (outward from the old face) must read `EZ + n` now, or the doors,
    * crest, niche and statue all end up buried inside the block.
    */
-  const EZ = frontZ + MAIN.entryProj;
+  /**
+   * EZ is the OUTER FACE of the entrance projection, not frontZ + entryProj.
+   *
+   * The piers are box(..., MAIN.entryProj + 0.6, ...) centred on
+   * frontZ + entryProj/2, so their outer face sits at frontZ + entryProj + 0.3 —
+   * 0.3 m proud of the naive value. Using the naive one put every façade detail
+   * (windows, sills, reveals, crest, statue niche) 30 cm INSIDE the masonry:
+   * the projection read as four blank storeys of concrete with nothing on it.
+   */
+  const EZ = frontZ + MAIN.entryProj + 0.3;
   {
     const EH = H + 1.6; // taller
     /**
@@ -251,36 +260,38 @@ export function buildMainBuilding(parent, M, opts = {}) {
     for (const sx of [-1, 1]) {
       const pw = (MAIN.entryW - OW) / 2;    // pier width
       b.add(box(pw, EH, MAIN.entryProj + 0.6, TEXSCALE.concrete), 'dctWall', {
-        pos: [MAIN.x + sx * (OW / 2 + pw / 2), EH / 2, frontZ - MAIN.entryProj / 2],
+        pos: [MAIN.x + sx * (OW / 2 + pw / 2), EH / 2, frontZ + MAIN.entryProj / 2],
         collide: true,
       });
     }
     // lintel over the opening
     b.add(box(OW, EH - 3.9, MAIN.entryProj + 0.6, TEXSCALE.concrete), 'dctWall', {
-      pos: [MAIN.x, 3.9 + (EH - 3.9) / 2, frontZ - MAIN.entryProj / 2],
+      pos: [MAIN.x, 3.9 + (EH - 3.9) / 2, frontZ + MAIN.entryProj / 2],
     });
 
     // Banding continues around the projection
     for (let f = 1; f <= N; f++) {
       b.add(box(MAIN.entryW + 0.3, 0.42, MAIN.entryProj + 0.9, 2), 'dctBand',
-        { pos: [MAIN.x, f * FH - 0.2, frontZ - MAIN.entryProj / 2] });
+        { pos: [MAIN.x, f * FH - 0.2, frontZ + MAIN.entryProj / 2] });
     }
 
     // Pediment + cornice
     b.add(box(MAIN.entryW + 1.4, 0.5, MAIN.entryProj + 1.6, 2), 'paintWhite',
-      { pos: [MAIN.x, EH + 0.2, frontZ - MAIN.entryProj / 2] });
+      { pos: [MAIN.x, EH + 0.2, frontZ + MAIN.entryProj / 2] });
     // Little raking pediment on top of the entrance
     const shape = new THREE.Shape();
     const gw = MAIN.entryW + 1.2, gh = 1.5;
     shape.moveTo(-gw / 2, 0); shape.lineTo(gw / 2, 0); shape.lineTo(0, gh); shape.closePath();
     const ped = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
-    ped.translate(MAIN.x, EH + 0.45, frontZ - MAIN.entryProj + 0.05);
+    ped.translate(MAIN.x, EH + 0.45, frontZ + MAIN.entryProj + 0.05);
     b.addGeo(ped, 'paintWhite');
     // Keystone crest
     {
       const crest = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), M.crest);
       crest.position.set(MAIN.x, EH - 1.4, EZ + 0.06);
-      crest.rotation.y = Math.PI;
+      // PlaneGeometry faces local +Z, and this face now points +Z too, so the
+      // half-turn that used to be needed here would aim it into the masonry.
+      // Left upright; the group's own yaw handles the rest.
       b.addSign(crest);
     }
 
@@ -305,12 +316,19 @@ export function buildMainBuilding(parent, M, opts = {}) {
           // reveal: a shallow recess so the light sits in the wall
           b.add(box(winW + 0.30, winH + 0.30, 0.06, 1), 'dctBand',
             { pos: [x, y, EZ + 0.05] });
+          /**
+           * windowUnit builds its frame facing LOCAL -Z, which was correct when
+           * the entrance face pointed that way. Now that frontZ is on the campus
+           * side the face points +Z, so every unit on it has to be yawed half a
+           * turn or it is backface-culled and the projection reads as four
+           * storeys of blank concrete with a shadow where the glass should be.
+           */
           for (const p of windowUnit(winW, winH, {
             depth: 0.16, frame: 0.075,
             glassKey: nightMode && f % 2 === 0 ? 'glassLit' : 'glass',
             frameKey: 'paintWhite', mullions: 1, transom: true,
           })) {
-            b.addGeo(p.geo.clone().translate(x, y, EZ + 0.02), p.key);
+            b.addGeo(p.geo.clone().rotateY(Math.PI).translate(x, y, EZ + 0.02), p.key);
           }
           // sill
           b.add(box(winW + 0.4, 0.1, 0.24, 1), 'paintWhite',
@@ -750,7 +768,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
   // Main façade lettering: DOMINICAN COLLEGE OF TARLAC across the entry cornice
   {
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(16, 1.56), M.signDCT);
-    sign.position.set(0, H + 1.0, frontZ - MAIN.entryProj - 0.02 - MAIN.z);
+    sign.position.set(0, H + 1.0, frontZ + MAIN.entryProj + 0.02 - MAIN.z);
     sign.rotation.y = Math.PI;
     group.add(sign);
     // crest + statue placement handled by builders (already rebased)
