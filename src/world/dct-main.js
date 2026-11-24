@@ -36,7 +36,28 @@ export function buildMainBuilding(parent, M, opts = {}) {
   const b = new Builder('main');
   const { w: W, d: D, floorH: FH, floors: N } = MAIN;
   const H = FH * N;
-  const frontZ = MAIN.z - MAIN.d / 2; // world Z of the façade plane
+  /**
+   * FRONT PLANE of the shell, in AUTHORED Z.
+   *
+   * This was MAIN.z - d/2, documented as "world Z of the façade plane". It is
+   * not a world coordinate at all. The Builder translates everything by
+   * (-MAIN.x, 0, -MAIN.z) and then the group yaws +pi/2, so authored (ax, az)
+   * becomes world
+   *
+   *     world_x = MAIN.x + (az - MAIN.z)
+   *     world_z = MAIN.z - (ax - MAIN.x)
+   *
+   * Authored Z is therefore the building's DEPTH axis. At MAIN.z - d/2 the front
+   * plane landed at world x -93.75 — the BACK of the building, away from the
+   * campus — so the entrance projection, porte-cochère, doors, crest and statue
+   * niche were all built facing an empty field behind the school. The elevation
+   * you meet walking up the drive was the plain rear wall of windows.
+   *
+   * At MAIN.z + d/2 the front plane lands at world x -78.25, which is the
+   * campus-facing façade, and everything hanging off frontZ comes back round to
+   * the right side.
+   */
+  const frontZ = MAIN.z + MAIN.d / 2;
   const hw = W / 2, hd = D / 2;
 
   /* ============================================================ MASSING */
@@ -206,7 +227,15 @@ export function buildMainBuilding(parent, M, opts = {}) {
   }
 
   /* ===================================================== CENTRAL ENTRY BAY */
-  const EZ = frontZ - MAIN.entryProj;
+  /**
+   * Face of the entrance projection.
+   *
+   * With frontZ on the campus side, the projection stands PROUD of the façade,
+   * i.e. further out along authored +Z. Every detail offset that used to read
+   * `EZ - n` (outward from the old face) must read `EZ + n` now, or the doors,
+   * crest, niche and statue all end up buried inside the block.
+   */
+  const EZ = frontZ + MAIN.entryProj;
   {
     const EH = H + 1.6; // taller
     /**
@@ -250,7 +279,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
     // Keystone crest
     {
       const crest = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), M.crest);
-      crest.position.set(MAIN.x, EH - 1.4, EZ - 0.06);
+      crest.position.set(MAIN.x, EH - 1.4, EZ + 0.06);
       crest.rotation.y = Math.PI;
       b.addSign(crest);
     }
@@ -275,17 +304,17 @@ export function buildMainBuilding(parent, M, opts = {}) {
           if (topFloor && c === 1) continue;
           // reveal: a shallow recess so the light sits in the wall
           b.add(box(winW + 0.30, winH + 0.30, 0.06, 1), 'dctBand',
-            { pos: [x, y, EZ - 0.05] });
+            { pos: [x, y, EZ + 0.05] });
           for (const p of windowUnit(winW, winH, {
             depth: 0.16, frame: 0.075,
             glassKey: nightMode && f % 2 === 0 ? 'glassLit' : 'glass',
             frameKey: 'paintWhite', mullions: 1, transom: true,
           })) {
-            b.addGeo(p.geo.clone().translate(x, y, EZ - 0.02), p.key);
+            b.addGeo(p.geo.clone().translate(x, y, EZ + 0.02), p.key);
           }
           // sill
           b.add(box(winW + 0.4, 0.1, 0.24, 1), 'paintWhite',
-            { pos: [x, y - winH / 2 - 0.16, EZ - 0.08] });
+            { pos: [x, y - winH / 2 - 0.16, EZ + 0.08] });
         }
       }
     }
@@ -293,49 +322,49 @@ export function buildMainBuilding(parent, M, opts = {}) {
     /* ---------- statue niche ---------- */
     const nicheY0 = FH * 3.4, nicheH = FH * 1.5;
     // Dark recess
-    b.add(box(2.5, nicheH, 0.5, 1.5), 'interior', { pos: [MAIN.x, nicheY0 + nicheH / 2, EZ + 0.28] });
+    b.add(box(2.5, nicheH, 0.5, 1.5), 'interior', { pos: [MAIN.x, nicheY0 + nicheH / 2, EZ - 0.28] });
     // Side jambs & lintel
     for (const s of [-1, 1]) {
-      b.add(box(0.36, nicheH + 0.4, 0.75, 1.5), 'paintWhite', { pos: [MAIN.x + s * 1.43, nicheY0 + nicheH / 2, EZ + 0.15] });
+      b.add(box(0.36, nicheH + 0.4, 0.75, 1.5), 'paintWhite', { pos: [MAIN.x + s * 1.43, nicheY0 + nicheH / 2, EZ - 0.15] });
       // slim engaged columns on the jambs
       const cp = column(0.19, nicheH * 0.86, { key: 'paintCream', baseH: 0.12, capH: 0.12, segments: 10 });
-      for (const p of cp) b.addGeo(p.geo.clone().translate(MAIN.x + s * 1.43, nicheY0 + nicheH * 0.07, EZ - 0.22), p.key);
+      for (const p of cp) b.addGeo(p.geo.clone().translate(MAIN.x + s * 1.43, nicheY0 + nicheH * 0.07, EZ + 0.22), p.key);
     }
-    b.add(box(3.2, 0.4, 0.9, 1.5), 'paintWhite', { pos: [MAIN.x, nicheY0 + nicheH + 0.1, EZ + 0.1] });
+    b.add(box(3.2, 0.4, 0.9, 1.5), 'paintWhite', { pos: [MAIN.x, nicheY0 + nicheH + 0.1, EZ - 0.1] });
     // Arched head
     const ah = cylinder(1.25, 1.25, 0.4, 14, 1);
     ah.rotateX(Math.PI / 2);
-    ah.translate(MAIN.x, nicheY0 + nicheH, EZ + 0.25);
+    ah.translate(MAIN.x, nicheY0 + nicheH, EZ - 0.25);
     b.addGeo(ah, 'interior');
     // Balcony
-    b.add(box(4.6, 0.28, 1.5, 2), 'paintWhite', { pos: [MAIN.x, nicheY0 - 0.14, EZ - 0.55], collide: true });
-    for (const p of railingLine(MAIN.x - 2.2, EZ - 1.28, MAIN.x + 2.2, EZ - 1.28, nicheY0, 0.9, { spacing: 0.2 })) {
+    b.add(box(4.6, 0.28, 1.5, 2), 'paintWhite', { pos: [MAIN.x, nicheY0 - 0.14, EZ + 0.55], collide: true });
+    for (const p of railingLine(MAIN.x - 2.2, EZ + 1.28, MAIN.x + 2.2, EZ + 1.28, nicheY0, 0.9, { spacing: 0.2 })) {
       b.addGeo(p.geo.clone().translate(0, 0, 0), p.key);
     }
     // Balusters (chunky, readable at distance)
     for (let i = 0; i < 11; i++) {
       const x = MAIN.x - 2.0 + i * 0.4;
-      b.add(cylinder(0.055, 0.075, 0.68, 6), 'paintWhite', { pos: [x, nicheY0 + 0.44, EZ - 1.24] });
+      b.add(cylinder(0.055, 0.075, 0.68, 6), 'paintWhite', { pos: [x, nicheY0 + 0.44, EZ + 1.24] });
     }
     // Saint Dominic statue: robe, hood, head, halo, lily
     const sy = nicheY0 + 0.1;
-    b.add(cylinder(0.42, 0.62, 1.55, 12), 'statue', { pos: [MAIN.x, sy + 0.78, EZ + 0.1] });
-    b.add(cylinder(0.3, 0.42, 0.55, 12), 'statue', { pos: [MAIN.x, sy + 1.8, EZ + 0.1] });
-    b.add(sphere(0.2, 12), 'statue', { pos: [MAIN.x, sy + 2.2, EZ + 0.1] });
-    b.add(cylinder(0.3, 0.3, 0.06, 12), 'gold', { pos: [MAIN.x, sy + 2.28, EZ + 0.03], rot: [Math.PI / 2 - 0.3, 0, 0] });
+    b.add(cylinder(0.42, 0.62, 1.55, 12), 'statue', { pos: [MAIN.x, sy + 0.78, EZ - 0.1] });
+    b.add(cylinder(0.3, 0.42, 0.55, 12), 'statue', { pos: [MAIN.x, sy + 1.8, EZ - 0.1] });
+    b.add(sphere(0.2, 12), 'statue', { pos: [MAIN.x, sy + 2.2, EZ - 0.1] });
+    b.add(cylinder(0.3, 0.3, 0.06, 12), 'gold', { pos: [MAIN.x, sy + 2.28, EZ - 0.03], rot: [Math.PI / 2 - 0.3, 0, 0] });
     // Lily in one hand
-    b.add(cylinder(0.025, 0.025, 1.0, 5), 'paintWhite', { pos: [MAIN.x + 0.5, sy + 1.5, EZ + 0.18] });
+    b.add(cylinder(0.025, 0.025, 1.0, 5), 'paintWhite', { pos: [MAIN.x + 0.5, sy + 1.5, EZ - 0.18] });
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
       b.add(sphere(0.07, 6), 'paintWhite', {
-        pos: [MAIN.x + 0.5 + Math.cos(a) * 0.08, sy + 2.02, EZ + 0.18 + Math.sin(a) * 0.08],
+        pos: [MAIN.x + 0.5 + Math.cos(a) * 0.08, sy + 2.02, EZ - 0.18 + Math.sin(a) * 0.08],
       });
     }
     // Book in the other hand
-    b.add(box(0.12, 0.42, 0.3, 1), 'woodDark', { pos: [MAIN.x - 0.45, sy + 1.5, EZ + 0.2], rot: [0, 0, 0.15] });
+    b.add(box(0.12, 0.42, 0.3, 1), 'woodDark', { pos: [MAIN.x - 0.45, sy + 1.5, EZ - 0.2], rot: [0, 0, 0.15] });
 
     /* ---------- main doors ---------- */
-    const dz = EZ + 0.02;
+    const dz = EZ - 0.02;
     b.add(box(5.4, 0.3, 0.9, 2), 'paintWhite', { pos: [MAIN.x, 3.5, dz + 0.1] });
     /**
      * Doors, now OPEN.

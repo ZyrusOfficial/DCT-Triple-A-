@@ -1,0 +1,2 @@
+[{"name":"ec","cam":[-46,5,9.4],"look":[-80,10,9.4],"fov":72,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const rc=new T.Raycaster(new T.Vector3(-30,2.0,-6),new T.Vector3(-1,0,0));const h=rc.intersectObjects(S.children,true);const o=h.slice(0,10).map(x=>({n:x.object.name,x:+x.point.x.toFixed(1),z:+x.point.z.toFixed(1)}));return JSON.stringify(o)})()"}]

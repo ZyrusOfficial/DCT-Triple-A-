@@ -1,0 +1,2 @@
+[{"name":"wf","cam":[-46,5,9.4],"look":[-80,10,9.4],"fov":72,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const probe=(x)=>{const rc=new T.Raycaster(new T.Vector3(x,6,9.4),new T.Vector3(x<-86?1:-1,0,0));const h=rc.intersectObjects(S.children,true).filter(o=>o.object.name.startsWith('main'));return h.slice(0,3).map(o=>o.object.name.replace('main:','')+'@'+(x<-86?o.point.x:o.point.x).toFixed(1)).join(' | ');};return JSON.stringify({fromWest:probe(-100),fromEast:probe(-70)})})()"}]
