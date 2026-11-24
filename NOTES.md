@@ -57,7 +57,7 @@ Shot sets:
 
 | Set | Views |
 |---|---|
-| `verify.json` | fountain, gate letters, municipal hall, covered court |
+| `verify.json` | the standing pass — gate, yard, main building x2, covered court, shrine front, forecourt statue, nave, altar, aerial |
 | `survey.json` | six-way campus survey (plaza, municipal, main building, spawn, court, aerial) |
 | `int.json` | shrine interior — nave, roof, altar, side |
 | `front.json`, `doors.json`, `rb.json` | shrine façade, open doors, rear |
@@ -67,11 +67,15 @@ Shot sets:
 Measured on the Ryzen-class SwiftShader rig at 1280×720, `--quality low`:
 
 ```
-~330 draws  ~500k triangles  ~210 geometries  ~140 textures
+~270-420 draws  ~500k triangles  ~210 geometries  ~140 textures
 build ~9-14 s  (materials is ~85% of it)
-227 colliders
-20-30 fps
+281 colliders   91 interaction zones
+20-27 fps
 ```
+
+Interior views run 256-290 draws, campus exterior 300-336. The covered court is
+the heaviest single view at ~418 because the basketball court, bleachers and the
+shrine all fall inside its frustum at once.
 
 Stage timings print once as `[build] timings {...}` and are also on
 `world.stats.timings`.
@@ -114,12 +118,62 @@ These are all documented in code comments at the point of failure. Summarised:
 - Fourteen Stations of the Cross on the nave piers, seven per wall, running
   anticlockwise from the sanctuary, each with a frame, painted plaque and candle
   cup.
+- Altar crucifix (stepped marble foot, gilt upright and crossbar, pale corpus)
+  and a hanging sanctuary lamp on three chains, red glass over a brighter core.
+- Shrine side doors rebuilt: two leaves each, centre stiles, raised panels,
+  glazed transoms, moulded surrounds with archivolts, brass handles.
+- Forecourt statue of San Nicolas: `robedFigure` at 1.35 scale in a pale outdoor
+  robe stone on the brick plinth, rotated to face the approach.
+- Campus furniture along the walkway spine: flagpole on the ceremonial axis,
+  nine planters at the junctions, ten benches, three bins, a notice board, a
+  five-hoop bike rack.
+- Main building window band through the middle of the grid.
+- 91 interaction zones: 36 original plus 55 for the walkway furniture and the
+  whole shrine nave (altar, retablo, San Nicolas, lamp, pews, 14 Stations, side
+  doors).
 
 ## Open work
 
-- Main building has a blank band through the middle of its window grid.
-- Shrine interior could take: pew end-caps, a proper sanctuary lamp, marble
-  inlay on the sanctuary platform, and a confessional.
+- The shrine's main-door sign lettering is occluded by the porch columns from
+  most approach angles. Either raise the sign or space the columns.
+- Shrine interior could still take: pew end-caps, marble inlay on the sanctuary
+  platform, a confessional, and a proper reredos shadow so the centre bay does
+  not read flat.
+- The niche haloes are a 12-ray sunburst at 0.27 x the figure scale. They read
+  correctly from the nave but are heavy at 2 m; consider 8 shorter rays.
+
+## More traps paid for in blood
+
+- **A missing counter is not a missing feature.** `stats.interactables` read 0
+  on every build for several sessions and looked like an unimplemented
+  requirement. All 36 zones existed and worked the whole time; the number came
+  from a `World#interactables` array that was initialised and never written.
+  Before believing a zero in a stat, print the thing the stat is supposed to
+  summarise.
+- **`??` on a property that does not exist is silent.** Writing
+  `L.church.apseZ ?? fallback` where `L.church` has no `apseZ` takes the fallback
+  without a murmur, so fourteen Stations of the Cross were about to be placed in
+  the wrong part of the nave. Derive geometry from fields you have verified
+  exist (`naveL / 2`) rather than nullish-coalescing ones you have not.
+- **A "lighting" problem can be a specular problem on a material you never
+  changed.** The sanctuary read as a glowing yellow slab through three separate
+  changes to the sanctuary light, because the cause was `floorFill` — a
+  14-intensity fill light standing 13.8 m in front of the altar at head height
+  with decay 1.0, dumping a third of its power into the antependium from
+  straight on. Bloom off did nothing, emissive off did nothing, lights x0.25
+  left the pool intact. Only darkening the altar materials removed it. Isolate
+  the SURFACE first, then reason about what is lighting it.
+- **An embroidered frontal is cloth.** `M.altarFrontal` at metalness 0.62 filled
+  the lower half of the frame with a mirror when you stood 1.5 m away. Metalness
+  belongs on the orphrey threads, not the frontal.
+- **Interaction zones must clear the collider of the thing they describe.** The
+  flagpole zone was r 2.6 on a plinth 2.1 m across, so the plinth collider held
+  the player outside their own prompt. Zone radius has to be plinth radius plus
+  standoff.
+- **Commit messages with backticks in a double-quoted heredoc get shell-expanded.**
+  `git commit -m "...`L.church.apseZ`..."` silently ate the backticked text and
+  left a sentence with a hole in it. Use `git commit -F file` for anything
+  containing backticks or `$(...)`.
 
 ## Two more traps paid for in blood
 
