@@ -516,12 +516,20 @@ export function buildMainBuilding(parent, M, opts = {}) {
             pos: [axOf(doorZl), y0 + 2.14, azWall - sx * 0.02],
           });
           /**
-           * Open leaf, lying in the plane of its frame: long in authored X (the
-           * door width runs along the corridor), thin across it.
+           * OPEN DOOR, swung back inside the classroom.
+           *
+           * Previously this leaf sat IN the opening, so every doorway on the
+           * corridor was a solid timber panel: you could not see into a single
+           * room from the spine, which defeats the point of furnishing them. A
+           * leaf hinged at one jamb and opened 80 degrees stands nearly
+           * perpendicular to the wall, inside the room, leaving the opening
+           * clear. Rotating in the XZ plane (about Y) does that; note the
+           * thickness goes in the box's THIRD argument because it ends up
+           * across the corridor.
            */
-          b.add(box(doorW, 2.02, 0.045, 1), 'wood', {
-            pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.10],
-            rot: [0, 0.21, 0],
+          b.add(box(0.045, 2.02, doorW, 1), 'wood', {
+            pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.52],
+            rot: [0, Math.PI / 2 * 0.88, 0],
           });
           // borrowed light high in the wall
           b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
@@ -571,7 +579,27 @@ export function buildMainBuilding(parent, M, opts = {}) {
           const cols2 = 3, rows = 4;
           for (let c = 0; c < cols2; c++) {
             for (let r2 = 0; r2 < rows; r2++) {
-              const dxl = boardXl + sx * (1.9 + c * ((roomD - 2.4) / cols2));
+              /**
+               * Desk columns march from the board back into the room.
+               *
+               * `boardXl` is already inset 0.10 from the wall, and the room is
+               * roomD (6.2) deep with the board at its far edge. Column centres
+               * must stay inside [xl0+0.9, xl1-0.9] or the outermost chairs push
+               * through the outer wall — which is what put desk vertices at
+               * x -94.9, beyond the building's -93.3 face.
+               */
+              /**
+               * March INWARD from the board.
+               *
+               * The board sits at the OUTER edge of its room, so for sx = -1
+               * (the room on the -xLocal side) "inward" means increasing xl,
+               * and for sx = +1 it means decreasing. That is -sx, not +sx.
+               * With +sx every column marched through the outer wall: desk
+               * vertices landed at x -95, past the building's -93.3 face, and
+               * the rooms rendered empty.
+               */
+              const dAvail = roomD - 2.2;                 // usable depth
+              const dxl = boardXl - sx * (0.9 + (c + 0.5) * (dAvail / cols2));
               const dzl = zl - bayW / 2 + 1.9 + r2 * ((bayW - 2.4) / rows);
               const dy = y0 + 0.045;
               b.add(box(0.64, 0.05, 0.46, 2), 'deskTop',
