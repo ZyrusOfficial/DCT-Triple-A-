@@ -181,6 +181,23 @@ export function buildMaterials() {
   M.roadPaintWhite = STD({ color: 0xdfdcd4, roughness: 0.72 });
   M.grassFar = STD({ color: 0x4a5c38, roughness: 1.0 });
   M.courtFloor = STD({ color: 0x4b6b52, roughness: 0.86 });
+  /**
+   * Painted court markings.
+   *
+   * These are thin boxes lifted 1.5 cm off the floor slab rather than a decal, so
+   * there is no z-fighting and no depth-bias trickery. Slightly emissive: a
+   * covered court is lit from the open sides, and white paint in shade goes grey
+   * and stops reading as a line at all.
+   */
+  M.courtLine = STD({
+    color: 0xe8e6de, roughness: 0.72,
+    emissive: 0x4a4842, emissiveIntensity: 0.30,
+  });
+  /** Painted timber bleacher boards. */
+  M.bleacherSeat = STD({
+    map: T.wood('#9a7346'), roughness: 0.78,
+    emissive: 0x3a2c1a, emissiveIntensity: 0.22,
+  });
 
   /* --------------------------------------------------------- town palette */
   M.houseWallA = STD({ map: T.stucco('#d8cfbc', { seed: 61, dirt: 0.6 }), roughness: 0.9 });

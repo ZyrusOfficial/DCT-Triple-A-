@@ -438,6 +438,134 @@ export class World {
       }
       // court floor (green/terracotta)
       b.addGeo(rect(cx - W / 2 + 0.4, cz - D / 2 + 0.4, cx + W / 2 - 0.4, cz + D / 2 - 0.4, 0.06, 4), 'courtFloor');
+
+      /**
+       * Basketball court: markings, hoops, backboards, bleachers.
+       *
+       * The court was a bare green rectangle under a roof — which, from inside,
+       * is what an empty warehouse looks like. A covered court in a Philippine
+       * school is the busiest structure on campus, and it reads as one almost
+       * entirely through its painted lines and its two hoops.
+       *
+       * FIBA-ish proportions, scaled to the 29.2 x 20.6 m slab: the painted
+       * court is 28 x 15 with a 2 m apron, which is what these sheds actually
+       * fit. Lines are thin boxes 1 cm above the floor so they cannot z-fight it.
+       */
+      {
+        const LY = 0.075;                       // just above the 0.06 slab
+        const CW = 28.0, CD = 15.0;             // painted court
+        const lx0 = cx - CW / 2, lx1 = cx + CW / 2;
+        const lz0 = cz - CD / 2, lz1 = cz + CD / 2;
+        const white = 'courtLine';
+        // touchlines and sidelines
+        for (const z of [lz0, lz1]) {
+          b.add(box(CW + 0.1, 0.012, 0.08, 1), white, { pos: [cx, LY, z] });
+        }
+        for (const x of [lx0, lx1]) {
+          b.add(box(0.08, 0.012, CD + 0.1, 1), white, { pos: [x, LY, cz] });
+        }
+        // centre line and centre circle
+        b.add(box(0.08, 0.012, CD, 1), white, { pos: [cx, LY, cz] });
+        {
+          const ring = new THREE.RingGeometry(1.78, 1.86, 36, 1);
+          ring.rotateX(-Math.PI / 2);
+          ring.translate(cx, LY, cz);
+          b.addGeo(ring, white);
+        }
+        // key, free-throw circle and three-point arc at each end
+        for (const sgn of [-1, 1]) {
+          const bx = cx + sgn * (CW / 2);
+          // key: 4.9 m wide x 5.8 m deep
+          const kx = bx - sgn * 5.8;
+          for (const q of [-1, 1]) {
+            b.add(box(5.8, 0.012, 0.08, 1), white,
+              { pos: [(bx + kx) / 2, LY, cz + q * 2.45] });
+          }
+          b.add(box(0.08, 0.012, 4.9, 1), white, { pos: [kx, LY, cz] });
+          // free-throw circle
+          const ft = new THREE.RingGeometry(1.78, 1.86, 30, 1);
+          ft.rotateX(-Math.PI / 2);
+          ft.translate(kx, LY, cz);
+          b.addGeo(ft, white);
+          // three-point arc: a chain of short chords, since there is no arc primitive
+          const R3 = 6.75, N3 = 26;
+          for (let i = 0; i < N3; i++) {
+            const a0 = -Math.PI * 0.36 + (i / N3) * Math.PI * 0.72;
+            const a1 = -Math.PI * 0.36 + ((i + 1) / N3) * Math.PI * 0.72;
+            const p0 = [bx + sgn * Math.cos(a0) * R3 * 0.78, cz + Math.sin(a0) * R3];
+            const p1 = [bx + sgn * Math.cos(a1) * R3 * 0.78, cz + Math.sin(a1) * R3];
+            const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+            const g = box(len, 0.012, 0.07, 1);
+            g.rotateY(-Math.atan2(p1[1] - p0[1], p1[0] - p0[0]));
+            g.translate((p0[0] + p1[0]) / 2, LY, (p0[1] + p1[1]) / 2);
+            b.addGeo(g, white);
+          }
+
+          /**
+           * Hoop assembly: post, boom, backboard, ring, net.
+           *
+           * The ring is at the regulation 3.05 m, the backboard 1.05 x 1.80, and
+           * the post stands just outside the baseline. These are the objects that
+           * make the shed read as a court from across the yard, so they are
+           * modelled rather than painted.
+           */
+          const postX = bx + sgn * 1.5;
+          b.add(cylinder(0.13, 0.16, 3.4, 10), 'steel',
+            { pos: [postX, 1.70, cz], collide: true });
+          // boom reaching back over the baseline to the ring
+          b.add(box(0.14, 0.14, 1.5, 1), 'steel',
+            { pos: [postX - sgn * 0.55, 3.35, cz] });
+          b.add(box(0.9, 0.10, 0.10, 1), 'steel',
+            { pos: [postX - sgn * 1.22, 3.30, cz] });
+          // backboard, facing the court
+          const band = new THREE.BoxGeometry(0.06, 1.05, 1.80);
+          band.translate(postX - sgn * 1.68, 3.35, cz);
+          b.addGeo(band, 'paintWhite');
+          // painted inner square
+          const bs = new THREE.PlaneGeometry(0.45, 0.59);
+          bs.rotateY(sgn > 0 ? -Math.PI / 2 : Math.PI / 2);
+          bs.translate(postX - sgn * 1.72, 3.22, cz);
+          b.addGeo(bs, 'courtLine');
+          // ring
+          const ringGeo = new THREE.TorusGeometry(0.225, 0.022, 6, 18);
+          ringGeo.rotateX(Math.PI / 2);
+          ringGeo.translate(postX - sgn * 1.90, 3.05, cz);
+          b.addGeo(ringGeo, 'paintRed');
+          // net: a ring of sloping strands
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2;
+            const nx = Math.cos(a) * 0.20, nz = Math.sin(a) * 0.20;
+            const strand = box(0.012, 0.40, 0.012, 1);
+            strand.rotateX(Math.cos(a) * 0.22);
+            strand.rotateZ(Math.sin(a) * 0.22);
+            strand.translate(postX - sgn * 1.90 + nx, 2.84, cz + nz);
+            b.addGeo(strand, 'paintWhite');
+          }
+        }
+
+        /**
+         * Bleachers down one side.
+         *
+         * Three stepped benches on a steel frame along the +Z touchline, which is
+         * where a school shed keeps them. Cheap, and they give the space a scale
+         * reference that a flat floor cannot.
+         */
+        {
+          const bz0 = lz1 + 1.5;
+          for (let i = 0; i < 3; i++) {
+            const y = 0.42 + i * 0.40;
+            const dz = bz0 + i * 0.85;
+            b.add(box(CW * 0.7, 0.09, 0.80, 2), 'bleacherSeat', { pos: [cx, y, dz] });
+            // riser
+            b.add(box(CW * 0.7, 0.34, 0.06, 1), 'bleacherSeat', { pos: [cx, y - 0.19, dz - 0.40] });
+            // frame legs every 3.5 m
+            for (let k = 0; k <= 6; k++) {
+              const x = cx - CW * 0.35 + (k / 6) * CW * 0.7;
+              b.add(box(0.07, y, 0.07, 1), 'steel', { pos: [x, y / 2, dz] });
+            }
+          }
+        }
+      }
     }
 
     /* --------------------------------------------------- covered walkways */
