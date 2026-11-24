@@ -483,11 +483,11 @@ export function buildMainBuilding(parent, M, opts = {}) {
 
           // wall either side of the opening, built as Z-segments
           const segW = bayW - doorW - 0.24;
-          b.add(box(0.12, H1, segW, 3), 'interiorPlaster', {
+          b.add(box(segW, H1, 0.12, 3), 'interiorPlaster', {
             pos: [wx, y0 + H1 / 2, doorZ + doorW / 2 + segW / 2],
           });
           // head over the door
-          b.add(box(0.12, H1 - 2.14, doorW + 0.24, 3), 'interiorPlaster',
+          b.add(box(doorW + 0.24, H1 - 2.14, 0.12, 3), 'interiorPlaster',
             { pos: [wx, y0 + 2.14 + (H1 - 2.14) / 2, doorZ] });
           // architrave: flat standing-band on the wall face, 0.10 deep in X
           for (const q of [-1, 1]) {
@@ -521,6 +521,12 @@ export function buildMainBuilding(parent, M, opts = {}) {
 
           // partition between this room and the next, along Z
           if (i > 0) {
+            /**
+             * Partition between rooms. It separates bays ALONG Z, so it is thin
+             * in world Z — and world Z is the box's local X. Hence the thin
+             * dimension is the first argument and the room depth, which runs in
+             * world X, is the third.
+             */
             b.add(box(roomD, H1, 0.10, 3), 'interiorPlaster', {
               pos: [midX, y0 + H1 / 2, z0 + i * bayW + 0.05],
             });
