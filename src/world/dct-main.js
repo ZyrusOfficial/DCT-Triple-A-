@@ -406,183 +406,203 @@ export function buildMainBuilding(parent, M, opts = {}) {
   /**
    * The inside of the main building.
    *
-   * ORIENTATION — read this before touching any number below.
+   * THE FRAME — this is the whole difficulty, and it has cost two rewrites.
    *
-   * The shell is authored as box(W, H, D) and then the whole group is yawed by
-   * MAIN.rotY = +pi/2. That yaw maps local +X to world +Z, so in WORLD space:
+   * `b` is a single Builder covering the shell AND this interior. Its geometry is
+   * authored in world-ish XZ, then at build time every piece is translated by
+   * (-MAIN.x, 0, -MAIN.z) and parented to a group carrying yaw +pi/2. The net
+   * mapping from an AUTHORED position (ax, az) to a WORLD position is therefore
    *
-   *     the building's 96 m LENGTH runs along Z   (z -38.6 .. +57.4)
-   *     the building's 15.5 m DEPTH runs along X   (x -93.75 .. -78.25)
+   *     world_x = MAIN.x + (az - MAIN.z)
+   *     world_z = MAIN.z - (ax - MAIN.x)
    *
-   * Two earlier attempts at this interior got that backwards and laid the bay
-   * grid out along X, which is only 15.5 m long: ten 9.5 m bays needed 95 m and
-   * marched off the end of the building to x -133, putting every classroom out
-   * on the lawn while the corridor itself stayed empty.
+   * which is a 90-degree swap plus a mirror. That is why the shell, authored as a
+   * box of width W along authored-X, correctly comes out 96 m long along WORLD Z.
    *
-   * So, in world coordinates:
-   *   LZ  = W - 2*WT   clear length along Z   (95.1)
-   *   LX  = D - 2*WT   clear depth  along X   (14.6)
-   *   the corridor runs the full length in Z, cW wide in X, centred on MAIN.x
-   *   classrooms sit either side of it in X, bays repeating along Z
+   * So inside this block, "authored X" is the building's LENGTH axis and
+   * "authored Z" is its DEPTH axis. It is confusing, and the way to stay sane is
+   * to work in a local frame and convert once:
    *
-   * xZ0/xX0 are the low corners of the clear interior; bx is a bay centre in Z,
-   * rx0/rx1 bound a classroom in X.
+   *     ax = MAIN.x + zLocal      (zLocal = along the length, in world Z terms)
+   *     az = MAIN.z - xLocal      (xLocal = across the depth, in world X terms)
+   *
+   * Everything below is written against zLocal (0..96 along the building) and
+   * xLocal (-7.3..+7.3 across it, 0 = corridor centreline) and converted with
+   * `P()`. Nothing here should contain a raw MAIN.x or MAIN.z.
    */
   {
-    const LZ = W - WT * 2;                 // clear length, along Z
-    const LX = D - WT * 2;                 // clear depth,  along X
     const H1 = FH - 0.35;                  // floor-to-ceiling
-    const cW = 2.2;                        // corridor width in X
-    const roomD = (LX - cW) / 2;           // one classroom's depth in X (6.2)
-
-    const z0 = MAIN.z - W / 2 + WT;        // -47.55 + 9.4 = -38.15
-    const xLo = MAIN.x - D / 2 + WT;       // -93.30
+    const cW = 2.2;                        // corridor clear width
+    const LX = D - WT * 2;                 // 14.6 clear depth, across the building
+    const LZ = W - WT * 2;                 // 95.1 clear length, along it
+    const roomD = (LX - cW) / 2;           // 6.2, one classroom deep
     const bays = 10;
-    const bayW = LZ / bays;                // 9.51 m per classroom, along Z
+    const bayW = LZ / bays;                // 9.51 per bay, along the length
 
-    const corrX0 = MAIN.x - cW / 2;        // -87.10
-    const corrX1 = MAIN.x + cW / 2;        // -84.90
+    /**
+     * zLocal/xLocal -> authored XZ. See the frame note above.
+     * zLocal is measured from the building's low-Z end; xLocal from the
+     * corridor centreline, positive toward the façade (+X in world terms).
+     */
+    const PX = (xLocal) => MAIN.x - xLocal;                 // authored X is along the length
+    const PZ = (zLocal) => MAIN.z - xLocal_to_z(zLocal);     // placeholder, replaced below
+    // (kept simple and explicit instead:)
+    /**
+     * Conversion from building-local metres to the authored frame.
+     *
+     * zLocal runs 0..96 along the building (world Z). xLocal runs -7.3..+7.3
+     * across it (world X), 0 on the corridor centreline.
+     *
+     * Applying the frame rule world_x = MAIN.x + (az - MAIN.z) and
+     * world_z = MAIN.z - (ax - MAIN.x) and inverting:
+     *   to get world Z = MAIN.z - 48 + zLocal  we need az such that
+     *   MAIN.x + (az - MAIN.z) ... does not involve Z at all.
+     * The clean inversion is: authored X carries the LENGTH, authored Z the
+     * DEPTH, and both are measured with the same sign flip that the shell uses:
+     *   ax = MAIN.x + (zLocal - 48)      -> length, centred on the group
+     *   az = MAIN.z + xLocal             -> depth, centred on the group
+     */
+    const zMid = W / 2;                    // 48
+    const axOf = (zLocal) => MAIN.x + (zLocal - zMid);
+    const azOf = (xLocal) => MAIN.z + xLocal;
+
+    const z0 = WT;                         // zLocal of the clear interior's start
+    const xHalf = LX / 2;                  // 7.3
 
     for (let f = 0; f < N; f++) {
       const y0 = f * FH;
       const floorY = f === 0 ? 0.085 : 0.025;
 
       /* ---------------------------------------------------------- floors */
-      // Corridor: terracotta tile running the length of the building.
-      b.add(box(LZ, 0.06, cW, 2.2), 'tileRed',
-        { pos: [MAIN.x, y0 + floorY, MAIN.z] });
-      // Classrooms either side: grey-green vinyl.
+      // Corridor tile, running the length. In authored terms that is X.
+      b.add(box(LZ, 0.06, cW, 2.2), 'tileRed', {
+        pos: [axOf(zMid), y0 + floorY, azOf(0)],
+      });
+      // Classroom vinyl either side, across the depth (authored Z).
       for (const sx of [-1, 1]) {
-        b.add(box(LZ, 0.06, roomD, 2.6), 'classroomFloor',
-          { pos: [MAIN.x + sx * (cW / 2 + roomD / 2), y0 + floorY, MAIN.z] });
+        b.add(box(LZ, 0.06, roomD, 2.6), 'classroomFloor', {
+          pos: [axOf(zMid), y0 + floorY, azOf(sx * (cW / 2 + roomD / 2))],
+        });
       }
-      /**
-       * Ceiling over the whole floor plate.
-       *
-       * DIMENSION ORDER MATTERS — and it is counter-intuitive here. The group is
-       * yawed +90 degrees, so a box's LOCAL X becomes WORLD Z. That means the
-       * building's 95 m LENGTH must be passed as the FIRST argument and its
-       * 14.6 m depth as the THIRD, even though in world terms the length is Z.
-       *
-       * Written the intuitive way round, `box(LX, .10, LZ)` produced a ceiling
-       * 95 m along X and 14.6 m along Z — sticking 40 m out of the building on
-       * both sides and leaving the actual corridor open to the sky. Probing up
-       * from inside the corridor returned the sky dome at 2394 m from every
-       * height, which is what eventually gave it away.
-       */
-      b.add(box(LZ, 0.10, LX, 3), 'ceilingBoard',
-        { pos: [MAIN.x, y0 + H1, MAIN.z] });
+      // Ceiling over the whole plate.
+      b.add(box(LZ, 0.10, LX, 3), 'ceilingBoard', {
+        pos: [axOf(zMid), y0 + H1, azOf(0)],
+      });
 
       /* --------------------------------------------- corridor walls + doors */
       for (const sx of [-1, 1]) {
-        const wx = MAIN.x + sx * (cW / 2);          // wall plane, in X
+        const azWall = azOf(sx * cW / 2);
         for (let i = 0; i < bays; i++) {
-          const bz = z0 + (i + 0.5) * bayW;         // bay centre, in Z
+          const zl = z0 + (i + 0.5) * bayW;      // bay centre, along the length
           const doorW = 1.0;
-          const doorZ = bz - bayW / 2 + doorW / 2 + 0.12;
-
-          // wall either side of the opening, built as Z-segments
+          const doorZl = zl - bayW / 2 + doorW / 2 + 0.12;
           const segW = bayW - doorW - 0.24;
+
+          // wall either side of the opening (long in authored X)
           b.add(box(segW, H1, 0.12, 3), 'interiorPlaster', {
-            pos: [wx, y0 + H1 / 2, doorZ + doorW / 2 + segW / 2],
+            pos: [axOf(doorZl + doorW / 2 + segW / 2), y0 + H1 / 2, azWall],
           });
           // head over the door
-          b.add(box(doorW + 0.24, H1 - 2.14, 0.12, 3), 'interiorPlaster',
-            { pos: [wx, y0 + 2.14 + (H1 - 2.14) / 2, doorZ] });
-          // architrave: flat standing-band on the wall face, 0.10 deep in X
+          b.add(box(doorW + 0.24, H1 - 2.14, 0.12, 3), 'interiorPlaster', {
+            pos: [axOf(doorZl), y0 + 2.14 + (H1 - 2.14) / 2, azWall],
+          });
+          // architrave: flat standing-band on the corridor face
           for (const q of [-1, 1]) {
-            b.add(box(0.10, 2.10, 0.07, 1), 'wood',
-              { pos: [wx - sx * 0.02, y0 + 1.05, doorZ + q * (doorW / 2 + 0.035)] });
+            b.add(box(0.07, 2.10, 0.10, 1), 'wood', {
+              pos: [axOf(doorZl + q * (doorW / 2 + 0.035)), y0 + 1.05, azWall - sx * 0.02],
+            });
           }
-          b.add(box(0.10, 0.08, doorW + 0.2, 1), 'wood',
-            { pos: [wx - sx * 0.02, y0 + 2.14, doorZ] });
+          b.add(box(doorW + 0.2, 0.08, 0.10, 1), 'wood', {
+            pos: [axOf(doorZl), y0 + 2.14, azWall - sx * 0.02],
+          });
           /**
-           * The open leaf lies in the plane of the frame, hinged at one jamb,
-           * swung about 12 degrees into the room. Long axis along Z (the door
-           * width), thickness in X.
+           * Open leaf, lying in the plane of its frame: long in authored X (the
+           * door width runs along the corridor), thin across it.
            */
-          b.add(box(0.045, 2.02, doorW, 1), 'wood', {
-            pos: [wx + sx * 0.10, y0 + 1.01, doorZ - doorW / 2 - 0.02],
-            rot: [0, sx * 0.21, 0],
+          b.add(box(doorW, 2.02, 0.045, 1), 'wood', {
+            pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.10],
+            rot: [0, 0.21, 0],
           });
           // borrowed light high in the wall
-          b.add(box(0.05, 0.62, bayW * 0.46, 1.4), 'glassDark',
-            { pos: [wx + sx * 0.08, y0 + 2.52, bz + bayW * 0.18] });
+          b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
+            pos: [axOf(zl + bayW * 0.18), y0 + 2.52, azWall + sx * 0.08],
+          });
         }
       }
 
       /* ------------------------------------------------------ classroom fit-out */
       for (let i = 0; i < bays; i++) {
-        const bz = z0 + (i + 0.5) * bayW;
+        const zl = z0 + (i + 0.5) * bayW;
         for (const sx of [-1, 1]) {
-          const rx0 = sx < 0 ? xLo : corrX1;
-          const rx1 = sx < 0 ? corrX0 : (MAIN.x + D / 2 - WT);
-          const midX = (rx0 + rx1) / 2;
+          // across-the-building bounds of this room, in xLocal
+          const xl0 = sx < 0 ? -xHalf : cW / 2;
+          const xl1 = sx < 0 ? -cW / 2 : xHalf;
+          const xlMid = (xl0 + xl1) / 2;
 
-          // partition between this room and the next, along Z
+          // partition between this room and the next, along the length
           if (i > 0) {
-            /**
-             * Partition between rooms. It separates bays ALONG Z, so it is thin
-             * in world Z — and world Z is the box's local X. Hence the thin
-             * dimension is the first argument and the room depth, which runs in
-             * world X, is the third.
-             */
-            b.add(box(roomD, H1, 0.10, 3), 'interiorPlaster', {
-              pos: [midX, y0 + H1 / 2, z0 + i * bayW + 0.05],
+            b.add(box(0.10, H1, roomD, 3), 'interiorPlaster', {
+              pos: [axOf(z0 + i * bayW + 0.05), y0 + H1 / 2, azOf(xlMid)],
             });
           }
 
-          // chalkboard on the OUTER wall, facing into the room
-          const boardX = sx < 0 ? rx0 + 0.10 : rx1 - 0.10;
-          b.add(box(0.06, 1.12, bayW * 0.62, 1), 'chalkboard',
-            { pos: [boardX, y0 + 1.74, bz] });
+          // chalkboard on the OUTER wall, long along the corridor
+          const boardXl = sx < 0 ? xl0 + 0.10 : xl1 - 0.10;
+          b.add(box(bayW * 0.62, 1.12, 0.06, 1), 'chalkboard', {
+            pos: [axOf(zl), y0 + 1.74, azOf(boardXl)],
+          });
           for (const ry of [0.36, 2.34]) {
-            b.add(box(0.12, ry === 0.36 ? 0.07 : 0.06, bayW * 0.66, 1), 'wood',
-              { pos: [boardX + sx * 0.03, y0 + ry, bz] });
+            b.add(box(bayW * 0.66, ry === 0.36 ? 0.07 : 0.06, 0.12, 1), 'wood', {
+              pos: [axOf(zl), y0 + ry, azOf(boardXl + sx * 0.03)],
+            });
           }
 
-          // teacher's desk near the board
-          b.add(box(0.64, 0.06, 1.38, 2), 'deskTop',
-            { pos: [boardX + sx * 1.05, y0 + 0.78, bz + 0.9] });
+          // teacher's desk, long along the corridor
+          b.add(box(1.38, 0.06, 0.64, 2), 'deskTop', {
+            pos: [axOf(zl + 0.9), y0 + 0.78, azOf(boardXl - sx * 1.05)],
+          });
           for (const qz of [-1, 1]) {
-            b.add(box(0.58, 0.75, 0.06, 1), 'deskFrame',
-              { pos: [boardX + sx * 1.05, y0 + 0.39, bz + 0.9 + qz * 0.6] });
+            b.add(box(0.06, 0.75, 0.58, 1), 'deskFrame', {
+              pos: [axOf(zl + 0.9 + qz * 0.6), y0 + 0.39, azOf(boardXl - sx * 1.05)],
+            });
           }
 
-          // desks: 3 columns across the room (in X), 4 rows deep (in Z)
+          // desks: 3 across the room, 4 rows along it
           const cols2 = 3, rows = 4;
           for (let c = 0; c < cols2; c++) {
             for (let r2 = 0; r2 < rows; r2++) {
-              const dx = boardX - sx * (1.9 + c * ((roomD - 2.4) / cols2));
-              const dz = bz - bayW / 2 + 1.9 + r2 * ((bayW - 2.4) / rows);
+              const dxl = boardXl + sx * (1.9 + c * ((roomD - 2.4) / cols2));
+              const dzl = zl - bayW / 2 + 1.9 + r2 * ((bayW - 2.4) / rows);
               const dy = y0 + 0.045;
-              b.add(box(0.46, 0.05, 0.64, 2), 'deskTop', { pos: [dx, dy + 0.72, dz] });
+              b.add(box(0.64, 0.05, 0.46, 2), 'deskTop',
+                { pos: [axOf(dzl), dy + 0.72, azOf(dxl)] });
               for (const qx of [-1, 1]) for (const qz of [-1, 1]) {
                 b.add(box(0.045, 0.70, 0.045, 1), 'deskFrame',
-                  { pos: [dx + qx * 0.18, dy + 0.35, dz + qz * 0.27] });
+                  { pos: [axOf(dzl + qx * 0.27), dy + 0.35, azOf(dxl + qz * 0.18)] });
               }
-              // chair behind the desk
-              b.add(box(0.38, 0.045, 0.40, 1.6), 'deskTop',
-                { pos: [dx + sx * 0.54, dy + 0.44, dz] });
-              b.add(box(0.04, 0.34, 0.40, 1.6), 'deskTop',
-                { pos: [dx + sx * 0.72, dy + 0.63, dz] });
+              // chair
+              b.add(box(0.40, 0.045, 0.38, 1.6), 'deskTop',
+                { pos: [axOf(dzl), dy + 0.44, azOf(dxl - sx * 0.54)] });
+              b.add(box(0.40, 0.34, 0.04, 1.6), 'deskTop',
+                { pos: [axOf(dzl), dy + 0.63, azOf(dxl - sx * 0.72)] });
               for (const qx of [-1, 1]) for (const qz of [-1, 1]) {
                 b.add(box(0.035, 0.44, 0.035, 1), 'deskFrame',
-                  { pos: [dx + sx * 0.54 + qx * 0.15, dy + 0.22, dz + qz * 0.16] });
+                  { pos: [axOf(dzl + qx * 0.16), dy + 0.22, azOf(dxl - sx * 0.54 + qz * 0.15)] });
               }
             }
           }
 
           // fluorescent batten and a clock over the door
-          b.add(box(0.20, 0.07, 1.15, 1), 'fluorescent',
-            { pos: [midX, y0 + H1 - 0.08, bz] });
-          b.add(cylinder(0.19, 0.19, 0.05, 16), 'clockFace',
-            { pos: [rx0 + 0.14, y0 + 2.70, bz - bayW * 0.30],
-              rot: [0, 0, Math.PI / 2] });
+          b.add(box(1.15, 0.07, 0.20, 1), 'fluorescent',
+            { pos: [axOf(zl), y0 + H1 - 0.08, azOf(xlMid)] });
+          b.add(cylinder(0.19, 0.19, 0.05, 16), 'clockFace', {
+            pos: [axOf(zl - bayW * 0.30), y0 + 2.70, azOf(xl0 + 0.14)],
+            rot: [0, 0, Math.PI / 2],
+          });
 
           // pinned display board on the partition
-          b.add(box(0.05, 0.85, bayW * 0.42, 1.2), 'paintCream', {
-            pos: [midX, y0 + 1.62, bz + bayW * 0.16],
+          b.add(box(bayW * 0.42, 0.85, 0.05, 1.2), 'paintCream', {
+            pos: [axOf(zl + bayW * 0.16), y0 + 1.62, azOf(xlMid)],
           });
         }
       }
@@ -590,23 +610,22 @@ export function buildMainBuilding(parent, M, opts = {}) {
       /* ------------------------------------------------------------ stairs */
       if (f < N - 1) {
         for (const sx of [-1, 1]) {
-          const stX = MAIN.x + sx * (LX / 2 - 1.5);
+          const xlSt = sx * (xHalf - 1.5);
           const steps = 22;
           const rise = FH / steps;
           const run = 0.29;
           for (let i = 0; i < steps; i++) {
-            b.add(box(2.9, rise, run * 0.96, 1), 'concreteTrim', {
-              pos: [stX, y0 + rise * (i + 0.5), MAIN.z + (i - steps / 2) * run],
+            b.add(box(run * 0.96, rise, 2.9, 1), 'concreteTrim', {
+              pos: [axOf(zMid + (i - steps / 2) * run), y0 + rise * (i + 0.5), azOf(xlSt)],
             });
           }
-          // stringer wall on the outside of the flight
-          b.add(box(0.12, FH, steps * run, 2), 'interiorPlaster', {
-            pos: [stX + sx * 1.5, y0 + FH / 2, MAIN.z],
+          b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
+            pos: [axOf(zMid), y0 + FH / 2, azOf(xlSt + sx * 1.5)],
           });
-          // handrail posts on the inner side
           for (let i = 0; i < steps; i += 3) {
             b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
-              pos: [stX - sx * 1.35, y0 + rise * i + 0.48, MAIN.z + (i - steps / 2) * run],
+              pos: [axOf(zMid + (i - steps / 2) * run), y0 + rise * i + 0.48,
+                    azOf(xlSt - sx * 1.35)],
             });
           }
         }
@@ -614,49 +633,38 @@ export function buildMainBuilding(parent, M, opts = {}) {
     }
 
     /* ------------------------------------------------------- entrance lobby */
-    /**
-     * Lobby: the stretch of corridor just inside the door, with the reception
-     * counter set to ONE SIDE so it never blocks the spine.
-     */
     {
-      const lz0 = MAIN.z - W / 2 + WT;      // -38.15 ... but the door is at z 9.4
-      /**
-       * The entrance is on the +X face (the facade at x -78.25), so the lobby is
-       * the corridor strip nearest that side, not a zone at one end of the
-       * building. Keep the tile, put the counter against the corridor's +X wall.
-       */
-      const cntX = corrX1 - 0.35;
-      const cntZ = MAIN.z + 2.4;
+      // The counter sits on the corridor's +X side, near mid-length, clear of
+      // the spine so circulation is never blocked.
+      const xlCnt = cW / 2 - 0.35;
+      const zlCnt = zMid + 2.4;
 
-      b.add(box(0.6, 1.05, 4.6, 2), 'woodDark', { pos: [cntX, 0.55, cntZ] });
-      b.add(box(0.78, 0.09, 4.6, 2), 'deskTop', { pos: [cntX, 1.12, cntZ] });
-      // low screen behind it, against the wall
-      b.add(box(0.10, 2.4, 5.4, 2), 'wood', { pos: [corrX1 + 0.04, 1.2, cntZ] });
+      b.add(box(4.6, 1.05, 0.6, 2), 'woodDark',
+        { pos: [axOf(zlCnt), 0.55, azOf(xlCnt)] });
+      b.add(box(4.6, 0.09, 0.78, 2), 'deskTop',
+        { pos: [axOf(zlCnt), 1.12, azOf(xlCnt)] });
+      b.add(box(5.4, 2.4, 0.10, 2), 'wood',
+        { pos: [axOf(zlCnt), 1.2, azOf(cW / 2 + 0.04)] });
       for (let i = 0; i < 8; i++) {
-        b.add(box(0.16, 2.4, 0.18, 1), 'woodDark',
-          { pos: [corrX1 - 0.02, 1.2, cntZ - 2.1 + i * 0.6] });
+        b.add(box(0.18, 2.4, 0.16, 1), 'woodDark',
+          { pos: [axOf(zlCnt - 2.1 + i * 0.6), 1.2, azOf(cW / 2 - 0.02)] });
       }
 
-      /**
-       * The school crest, on the wall the visitor faces coming in.
-       */
+      // Crest on the wall a visitor faces walking in.
       const crest2 = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), M.crest);
-      crest2.position.set(corrX0 + 0.02, 3.1, MAIN.z);
-      crest2.rotation.y = Math.PI / 2;
+      crest2.position.set(axOf(zMid), 3.1, azOf(-cW / 2 - 0.02));
+      crest2.rotation.y = 0;
       b.addSign(crest2);
 
-      /**
-       * Honour boards on the opposite corridor wall — long glazed cases of
-       * gilt-framed class lists, one per decade.
-       */
+      // Honour boards on the opposite corridor wall.
       for (const dz of [-6.0, 6.0]) {
-        b.add(box(0.10, 1.5, 4.2, 1.6), 'woodDark',
-          { pos: [corrX0 + 0.02, 2.05, MAIN.z + dz] });
-        b.add(box(0.05, 1.3, 4.0, 1), 'paintCream',
-          { pos: [corrX0 + 0.08, 2.05, MAIN.z + dz] });
+        b.add(box(4.2, 1.5, 0.10, 1.6), 'woodDark',
+          { pos: [axOf(zMid + dz), 2.05, azOf(-cW / 2 - 0.02)] });
+        b.add(box(4.0, 1.3, 0.05, 1), 'paintCream',
+          { pos: [axOf(zMid + dz), 2.05, azOf(-cW / 2 - 0.08)] });
         for (let i = 0; i < 9; i++) {
-          b.add(box(0.02, 0.09, 3.7, 1), 'dctBand',
-            { pos: [corrX0 + 0.12, 1.52 + i * 0.13, MAIN.z + dz] });
+          b.add(box(3.7, 0.09, 0.02, 1), 'dctBand',
+            { pos: [axOf(zMid + dz), 1.52 + i * 0.13, azOf(-cW / 2 - 0.12)] });
         }
       }
     }
