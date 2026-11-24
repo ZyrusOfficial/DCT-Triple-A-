@@ -485,6 +485,11 @@ export function buildMainBuilding(parent, M, opts = {}) {
     const roomD = (LX - cW) / 2;           // 6.2, one classroom deep
     const bays = 10;
     const bayW = LZ / bays;                // 9.51 per bay, along the length
+    /**
+     * Which bay looks onto the entrance. The door is at world z = MAIN.z, which
+     * is zLocal = W/2; bays start at zLocal = WT and step by bayW.
+     */
+    const entryBay = Math.floor((W / 2 - WT) / bayW);
 
     /**
      * zLocal/xLocal -> authored XZ. See the frame note above.
@@ -589,6 +594,12 @@ export function buildMainBuilding(parent, M, opts = {}) {
       for (let i = 0; i < bays; i++) {
         const zl = z0 + (i + 0.5) * bayW;
         for (const sx of [-1, 1]) {
+          /**
+           * Skip the bay that looks onto the entrance, on the façade side only:
+           * that is where the cross-corridor comes through, so a classroom here
+           * would block the way in.
+           */
+          if (i === entryBay && sx > 0) continue;
           // across-the-building bounds of this room, in xLocal
           const xl0 = sx < 0 ? -xHalf : cW / 2;
           const xl1 = sx < 0 ? -cW / 2 : xHalf;
@@ -705,6 +716,36 @@ export function buildMainBuilding(parent, M, opts = {}) {
           }
         }
       }
+    }
+
+    /**
+     * ENTRANCE CROSS-CORRIDOR.
+     *
+     * The spine runs the building's LENGTH, but the door is in the middle of one
+     * LONG side — so walking in you were standing in a classroom, with desks on
+     * all sides and no way through to the rest of the building. A building's
+     * entrance has to open onto its circulation.
+     *
+     * This is the missing link: a cross-corridor on each floor running from the
+     * façade wall through the depth to the spine, in the bay that faces the door.
+     * It is 2.4 m wide in Z, centred on MAIN.z, and it takes the place of the
+     * two classroom rows in that one bay.
+     *
+     * The bay index is derived, not guessed: bays run from zLocal = WT upward in
+     * steps of bayW, and the door is at world z = MAIN.z, which is zLocal =
+     * W/2 = 48. Bay (48 - WT)/bayW.
+     */
+    for (let f = 0; f < N; f++) {
+      const y0 = f * FH;
+      const floorY = f === 0 ? 0.085 : 0.025;
+      // Cross-corridor floor, from the façade wall to the spine.
+      b.add(box(roomD, 0.06, 2.4, 2.2), 'tileRed', {
+        pos: [axOf(W / 2 - WT / 2 - roomD / 2), y0 + floorY, azOf(cW / 2 - 0.1)],
+      });
+      // Its ceiling, dropped to the same height as the rest of the floor.
+      b.add(box(roomD + 0.4, 0.10, 2.6, 3), 'ceilingBoard', {
+        pos: [axOf(W / 2 - WT / 2 - roomD / 2), y0 + H1, azOf(cW / 2 - 0.1)],
+      });
     }
 
     /* ------------------------------------------------------- entrance lobby */
