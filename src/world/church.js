@@ -443,12 +443,47 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     }
 
     /* --------------------------- two side doors, simpler ------------------ */
+    /**
+     * Side doors.
+     *
+     * These were a single flat slab of `woodDark` recessed behind the porch,
+     * with a plain surround. In shade they carried no value at all and read as
+     * two black holes punched in the façade — the first thing the eye went to
+     * from the plaza.
+     *
+     * A door is legible from its construction, not its colour: two leaves, a
+     * centre stile, raised panels, a transom over the head, a threshold and a
+     * pair of handles. All of that sits a few centimetres proud of the wall, so
+     * it catches the porch light and the opening stops being a void.
+     */
     for (const s of [-1, 1]) {
       const dz = facadeZ + 0.42;
       const dx = s * (NW / 2 - 2.4);
-      b.add(box(2.1, 4.0, 0.14, 1.2), 'woodDark', { pos: [dx, 2.05, dz], collide: true });
-      b.add(box(2.35, 0.22, 0.42, 1.5), 'churchTrim', { pos: [dx, 4.1, dz + 0.05] });
-      for (const q of [-1, 1]) b.add(box(0.2, 4.0, 0.42, 1.5), 'churchTrim', { pos: [dx + q * 1.15, 2.05, dz + 0.05] });
+      // recess: a shallow dark reveal behind the leaves
+      b.add(box(2.1, 3.55, 0.10, 1.2), 'woodDark', { pos: [dx, 1.85, dz - 0.03], collide: true });
+      // two leaves, each with a centre stile and two raised panels
+      for (const q of [-1, 1]) {
+        const lx = dx + q * 0.51;
+        b.add(box(0.98, 3.5, 0.06, 1.2), 'wood', { pos: [lx, 1.82, dz + 0.05] });
+        for (const py of [0.85, 2.15]) {
+          b.add(box(0.74, 1.05, 0.035, 1), 'woodDark', { pos: [lx, py, dz + 0.09] });
+          b.add(box(0.80, 1.11, 0.02, 1), 'churchTrim', { pos: [lx, py, dz + 0.075] });
+        }
+        // handle
+        b.add(cylinder(0.028, 0.028, 0.16, 6), 'brass',
+          { pos: [lx - q * 0.36, 1.62, dz + 0.11], rot: [Math.PI / 2, 0, 0] });
+      }
+      // transom light over the head
+      b.add(box(1.96, 0.42, 0.08, 1), 'windowGlow',
+        { pos: [dx, 3.78, dz + 0.02] });
+      b.add(box(2.1, 0.09, 0.14, 1), 'churchTrim', { pos: [dx, 3.56, dz + 0.04] });
+      // surround, archivolt and threshold
+      b.add(box(2.35, 0.22, 0.44, 1.5), 'churchTrim', { pos: [dx, 4.06, dz + 0.05] });
+      for (const q of [-1, 1]) {
+        b.add(box(0.22, 4.0, 0.44, 1.5), 'churchTrim', { pos: [dx + q * 1.16, 2.05, dz + 0.05] });
+        b.add(box(0.10, 3.6, 0.10, 1), 'pavingRed', { pos: [dx + q * 1.30, 1.80, dz + 0.12] });
+      }
+      b.add(box(2.5, 0.10, 0.62, 1.5), 'pavingRed', { pos: [dx, 0.05, dz + 0.20] });
     }
   }
 
