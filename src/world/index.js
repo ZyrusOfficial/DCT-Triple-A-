@@ -123,7 +123,10 @@ export class World {
     stage('gate');
 
     onProgress(0.70, 'modelling the plaza');
+    // Collect the colliders this builder produced; see the note in
+    // buildPlazaExtras about them having been discarded.
     this.buildPlazaExtras(M);
+    this.colliders.push(...(this.plazaColliders || []));
 
     stage('plaza');
 
@@ -618,11 +621,179 @@ export class World {
     walk(-12.0, -22.0, -40.0, -22.0);               // across to the shrine approach
     walk(-40.0, -22.0, -40.0, -30.0);               // down to the forecourt
 
+    /* ------------------------------------------------- campus furniture */
+    /**
+     * Flagpole, planters, benches, bins, notice boards, bike racks.
+     *
+     * The yard between the gate and the 4-storey building was 92 x 71 m of bare
+     * paving with a walkway spine across it — from any point on it the campus
+     * looked abandoned, because a paved surface with nothing on it reads as a car
+     * park. These are the objects that make a school yard look used: a flagpole
+     * on the ceremonial axis, planting at the walkway junctions, seating where
+     * people wait, and the small clutter that accumulates along any route.
+     *
+     * Everything here is placed relative to the surveyed walkway spine so it
+     * cannot drift away from the paths people actually walk.
+     */
+    {
+      const fx = -14.0, fz = GZ;                 // ceremonial axis, east of the forecourt
+
+      /**
+       * FLAGPOLE. The single most identifying object on a Philippine campus
+       * yard: a tall white mast on a low plinth with a raised planter bed, and
+       * the flag at the top. Placed on the walkway axis so it terminates the
+       * view from the gate, which is where it belongs.
+       */
+      {
+        // octagonal plinth
+        b.add(cylinder(1.9, 2.1, 0.34, 8), 'concreteTrim',
+          { pos: [fx, 0.17, fz], collide: true });
+        b.add(cylinder(1.55, 1.65, 0.28, 8), 'concreteTrim', { pos: [fx, 0.46, fz] });
+        // soil ring and low planting
+        b.add(cylinder(1.42, 1.42, 0.06, 8), 'soil', { pos: [fx, 0.61, fz] });
+        // mast, in three tapered sections so it does not read as a pipe
+        b.add(cylinder(0.085, 0.12, 4.0, 10), 'paintWhite', { pos: [fx, 2.6, fz] });
+        b.add(cylinder(0.055, 0.085, 3.4, 10), 'paintWhite', { pos: [fx, 6.3, fz] });
+        b.add(cylinder(0.022, 0.055, 2.6, 8), 'paintWhite', { pos: [fx, 9.3, fz] });
+        // gold ball finial
+        b.add(sphere(0.13, 10, 8), 'brass', { pos: [fx, 10.68, fz] });
+        // halyard cleat and a coiled rope at the base
+        b.add(cylinder(0.05, 0.05, 0.18, 6), 'brass', { pos: [fx + 0.13, 1.35, fz] });
+
+        /**
+         * The flag itself: a pleated cloth hung from the halyard, with the blue
+         * field, the red band and the white triangle at the hoist. Modelled as
+         * three thin planes rather than a texture, because the geometry of a
+         * hanging flag in a light breeze is most of what makes it read.
+         */
+        {
+          const FW = 1.85, FH = 0.92, FY = 9.55;
+          const pole = fx + 0.06;
+          // blue upper band
+          b.add(box(0.02, FH * 0.5, FW, 1), 'dctBlueBand',
+            { pos: [pole + FW / 2, FY + FH * 0.25, fz] });
+          // red lower band
+          b.add(box(0.02, FH * 0.5, FW, 1), 'paintRed',
+            { pos: [pole + FW / 2, FY - FH * 0.25, fz] });
+          // white triangle at the hoist, as a thin extruded wedge
+          {
+            const sh = new THREE.Shape();
+            sh.moveTo(0, FH / 2); sh.lineTo(0, -FH / 2); sh.lineTo(1.05, 0);
+            sh.closePath();
+            const tri = new THREE.ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: false });
+            tri.rotateY(-Math.PI / 2);
+            tri.translate(pole + 0.03, FY, fz + FH / 2);
+            b.addGeo(tri, 'paintWhite');
+          }
+          // a few pleats, so the flag is not a flat card
+          for (let i = 0; i < 5; i++) {
+            const t = 0.2 + i * 0.18;
+            b.add(box(0.03, FH * (1 - t * 0.35), 0.05, 1), 'paintWhite',
+              { pos: [pole + FW * t + 0.05, FY - FH * t * 0.16, fz + FH * 0.5 + 0.02] });
+          }
+        }
+      }
+
+      /**
+       * Planters at the walkway junctions. Square tiled boxes with a shrub in
+       * each: these break up the paving and give the walkway edges a reason to
+       * exist. Kept clear of the walking line itself.
+       */
+      const planter = (px, pz) => {
+        b.add(box(1.7, 0.52, 1.7, 2), 'concreteTrim', { pos: [px, 0.26, pz], collide: true });
+        b.add(box(1.5, 0.06, 1.5, 1), 'soil', { pos: [px, 0.54, pz] });
+        // low box hedge in the bed
+        b.add(box(1.25, 0.42, 1.25, 2), 'leafCoreNear', { pos: [px, 0.76, pz] });
+        b.add(sphere(0.52, 9, 7), 'leafCoreNear', { pos: [px, 1.06, pz] });
+      };
+      for (const [px, pz] of [
+        [-12.0, GZ + 2.6], [-12.0, GZ - 2.6],
+        [-30.0, GZ + 2.6], [-30.0, GZ - 2.6],
+        [-48.0, GZ + 2.6], [-48.0, GZ - 2.6],
+        [-12.0, -22.0 + 2.6], [-12.0, -22.0 - 2.6],
+        [-40.0, -22.0 + 2.6],
+      ]) planter(px, pz);
+
+      /**
+       * Benches along the spine, facing the walk. Reuse of the park bench
+       * pattern: two stone standards and a slatted seat.
+       */
+      const yardBench = (bx, bz, face) => {
+        const yaw = face * Math.PI / 2;
+        const seat = box(1.85, 0.09, 0.52, 1.4);
+        seat.rotateY(yaw);
+        seat.translate(bx, 0.46, bz);
+        b.addGeo(seat, 'wood');
+        for (const sgn of [-1, 1]) {
+          const leg = box(0.16, 0.46, 0.46, 1);
+          leg.rotateY(yaw);
+          leg.translate(bx + Math.cos(yaw) * sgn * 0.76, 0.23, bz - Math.sin(yaw) * sgn * 0.76);
+          b.addGeo(leg, 'concreteDark');
+        }
+        const back = box(1.85, 0.40, 0.07, 1.4);
+        back.rotateY(yaw);
+        back.translate(bx, 0.74, bz - face * 0.22);
+        b.addGeo(back, 'wood');
+      };
+      for (let i = 0; i < 6; i++) {
+        yardBench(-16.0 - i * 5.4, GZ + 3.4, 1);
+        if (i < 4) yardBench(-18.0 - i * 5.4, GZ - 3.4, -1);
+      }
+
+      /**
+       * Litter bins and a notice board. Small objects, but their absence is
+       * conspicuous in exactly the way their presence is not.
+       */
+      for (const [bx2, bz2] of [[-13.2, GZ + 3.9], [-33.0, GZ - 3.9], [-47.2, GZ + 3.9]]) {
+        b.add(cylinder(0.24, 0.20, 0.72, 10), 'ironDark', { pos: [bx2, 0.36, bz2] });
+        b.add(cylinder(0.26, 0.26, 0.06, 10), 'ironDark', { pos: [bx2, 0.74, bz2] });
+        b.add(cylinder(0.13, 0.13, 0.02, 8), 'ironDark', { pos: [bx2, 0.78, bz2] });
+      }
+      {
+        // notice board on two posts, facing the walk
+        const nx = -26.0, nz = GZ - 3.6;
+        for (const sgn of [-1, 1]) {
+          b.add(box(0.09, 2.05, 0.09, 1), 'ironDark', { pos: [nx + sgn * 0.95, 1.02, nz] });
+        }
+        b.add(box(2.15, 1.15, 0.08, 1), 'wood', { pos: [nx, 1.62, nz] });
+        b.add(box(1.98, 0.98, 0.03, 1), 'paintWhite', { pos: [nx, 1.62, nz + 0.05] });
+        b.add(box(2.25, 0.10, 0.30, 1), 'wood', { pos: [nx, 2.24, nz] });
+      }
+
+      /**
+       * Bike rack: a row of inverted-U hoops, which is what every Philippine
+       * school actually has. Placed off the walk so it does not block it.
+       */
+      for (let i = 0; i < 5; i++) {
+        const rx = -44.0 + i * 0.86;
+        const rz = GZ - 4.6;
+        const hoop = new THREE.TorusGeometry(0.36, 0.035, 6, 14, Math.PI);
+        hoop.translate(rx, 0.36, rz);
+        b.addGeo(hoop, 'steel');
+        for (const sgn of [-1, 1]) {
+          b.add(cylinder(0.035, 0.035, 0.36, 6), 'steel',
+            { pos: [rx + sgn * 0.36, 0.18, rz] });
+        }
+      }
+    }
+
     const signs = b.signs || [];
     b.buildInto(this.root, M);
     // Handed to the interaction layer so props can be offered by proximity
     // without raycasting merged geometry every frame.
     this.refs = { benches: benchPositions, lamps: lampPositions };
+    /**
+     * RETURn the builder.
+     *
+     * Every `collide: true` in this function — the fountain basin, twelve park
+     * lamp posts, the park benches, the gate forecourt, and now the flagpole and
+     * planters — was being built and then thrown away, because the caller read
+     * `this.buildPlazaExtras(M)` for its side effects only and never collected
+     * `b.colliders`. So the fountain and every lamp post in the park have been
+     * walk-through since they were built.
+     */
+    this.plazaColliders = b.colliders;
+    return b;
   }
 
   /* ---------------------------------------------------------- vegetation */
