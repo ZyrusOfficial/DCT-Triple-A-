@@ -1,4 +1,0 @@
-[
-  { "name": "m7", "cam": [0,0,0], "look": [1,0,0], "fov": 50, "hour": 15.5,
-    "exec": "(()=>{const S=window.__app.scene;let out=[];S.traverse(o=>{if(o.name&&/church/.test(o.name)){const s=o.getWorldScale(new THREE.Vector3());const p=o.getWorldPosition(new THREE.Vector3());out.push(o.name+' scale='+s.x.toFixed(2)+','+s.y.toFixed(2)+','+s.z.toFixed(2)+' pos='+p.x.toFixed(1)+','+p.y.toFixed(1)+','+p.z.toFixed(1)+' vis='+o.visible);}});return out.join(' | ')})()" }
-]

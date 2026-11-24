@@ -114,6 +114,24 @@ export function buildMaterials() {
   M.concrete = STD({ map: T.concreteSlab('#b7b2a8', 3), roughness: 0.9 });
   M.concreteTrim = STD({ map: T.concreteSlab('#cdc8bd', 1), roughness: 0.8 });
   M.concreteDark = STD({ map: T.concreteSlab('#918c84', 4), roughness: 0.94 });
+  /**
+   * Basin liners and any other surface inside a concave well.
+   *
+   * The fountain basin's inner wall is a vertical cylinder facing away from the
+   * sun at every hour, with nothing above it but sky — so at roughness 0.94 it
+   * rendered near-black and the whole fountain read as a black bowl of blue
+   * paint. Real basin walls are tiled pale and are the brightest thing in the
+   * well. This is deliberately albedo-heavy and slightly emissive rather than a
+   * roughness tweak, because the problem is total absence of light, not gloss.
+   *
+   * floorTile(hex, groutHex) — no options object; repeats come from the
+   * geometry's UV scale, not the texture call.
+   */
+  M.basinLiner = STD({
+    map: T.floorTile('#d8d2c4', '#b8b0a0'),
+    roughness: 0.62,
+    emissive: 0x6a6558, emissiveIntensity: 0.30,
+  });
 
   M.paving = STD({ map: T.pavers('#998674'), roughness: 0.88 });
   // Plaza paving: a warmer, slightly darker tan than the campus yard, so the
@@ -281,9 +299,20 @@ export function buildMaterials() {
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
   /* ------------------------------------------------------------ water etc */
+  /**
+   * Water.
+   *
+   * With roughness 0.06 and no normal map this was a mirror: under a featureless
+   * sky dome there is nothing to reflect, so every basin and pool on the campus
+   * read as a flat sheet of opaque blue paint. Water reads as water through its
+   * broken, glinting surface — so the fix is ripples, and a slightly rougher
+   * surface that catches the sky as broken highlights instead of one flat value.
+   */
   M.water = new THREE.MeshStandardMaterial({
-    color: 0x6d8fa3, roughness: 0.06, metalness: 0.1,
-    transparent: true, opacity: 0.82, envMapIntensity: 1.6,
+    color: 0x4e7f96, roughness: 0.14, metalness: 0.06,
+    normalMap: T.waterNormals(),
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    transparent: true, opacity: 0.72, envMapIntensity: 2.1,
   });
 
   for (const k of Object.keys(M)) {
@@ -312,9 +341,19 @@ export function buildMaterials() {
     map: T.floorTile('#c9c2b4', '#a8a091'), roughness: 0.42, metalness: 0.03,
     emissive: 0x2a2a28, emissiveIntensity: 0.26,
   });
+  /**
+   * Corridor soffit.
+   *
+   * This was near-white (#cfd6d8) with a strong blue-grey emissive, and in every
+   * open-corridor view the ceiling panels blew out to the same value as the sky —
+   * so the walkways read as open voids with sky showing through the floors.
+   * A soffit under a slab is in shadow: it should be the darkest surface in the
+   * corridor, and the lighting that makes the walkway readable comes from the
+   * fittings hung under it, not from the soffit glowing.
+   */
   M.dctSoffit = STD({
-    map: T.stucco('#cfd6d8', { seed: 47, dirt: 0.35 }), roughness: 0.85,
-    emissive: 0x39414a, emissiveIntensity: 0.34,
+    map: T.stucco('#8d9497', { seed: 47, dirt: 0.45 }), roughness: 0.88,
+    emissive: 0x1d2226, emissiveIntensity: 0.16,
   });
   M.windowGlassN = STD({
     color: 0x2b3a44, roughness: 0.16, metalness: 0.55,
@@ -379,6 +418,25 @@ export function buildMaterials() {
   M.interiorPlaster = STD({
     map: T.stucco('#efe7d6', { seed: 5, dirt: 0.5 }), color: 0xc2cdd4,
     roughness: 0.9, emissive: 0x5a6470, emissiveIntensity: 0.30,
+  });
+  /**
+   * Station of the Cross plaques.
+   *
+   * Fourteen separate materials (one per numeral) would be fourteen extra draw
+   * calls for something seen from 10 m away at best. Instead the number is
+   * carried by the texture and the plaques are batched per material, with the
+   * numerals baked into a small pool of textures reused around the nave.
+   */
+  M.stationPlaque = STD({
+    map: T.stationPlaque(1), roughness: 0.62, metalness: 0.12,
+    // The nave is deliberately dim, so a dark painting on a dark wall vanishes.
+    // These are the only warm, bright objects at eye height along the walls and
+    // they need to hold up as such.
+    emissive: 0x6a5230, emissiveIntensity: 0.55,
+  });
+  M.stationFrame = STD({
+    map: T.wood('#4a3618'), roughness: 0.55, metalness: 0.10,
+    emissive: 0x2e2210, emissiveIntensity: 0.30,
   });
   M.interiorDado = STD({
     map: T.wood('#4b2a14'), roughness: 0.62,

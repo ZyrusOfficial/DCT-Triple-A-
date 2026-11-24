@@ -27,6 +27,144 @@
 import * as THREE from 'three';
 import { Builder, box, cylinder, sphere } from './kit.js';
 
+
+/**
+ * A robed saint, built from primitives.
+ *
+ * The niches used to hold a bare `cylinder` with a `sphere` balanced on top —
+ * legible as "there is something in this niche" from 30 m down the nave and as
+ * nothing at all from the altar rail. A statue is read almost entirely from its
+ * silhouette: the flare of the robe, the shoulders, the head turned slightly,
+ * and whatever the figure is holding.
+ *
+ * Built from a lathed robe profile rather than stacked cylinders, so the
+ * silhouette flares and falls the way a carved robe does. Everything is returned
+ * as geometry in local space for the caller to translate.
+ *
+ * @param o.robe  material key for the garment
+ * @param o.skin  material key for face and hands
+ * @param o.dark  material key for the inner garment / mantle
+ * @param o.halo  true to add a gilded ring behind the head
+ * @param o.staff true to add a pastoral staff in the right hand
+ * @param o.book  true to add a book held against the chest
+ * @param o.scale overall height multiplier (figures are ~1.75 m at 1.0)
+ * @returns {THREE.BufferGeometry[]} geometry, untranslated, plus {parts:[...]}
+ */
+function robedFigure(o = {}) {
+  const out = [];
+  const robe = o.robe || 'statueRobed';
+  const skin = o.skin || 'statue';
+  const dark = o.dark || 'statueRobed';
+  const S = o.scale || 1.0;
+
+  /**
+   * Robe: a lathe profile from hem to collar. Points are [radius, height] pairs.
+   * The bell of the hem and the pinch at the waist are what make it read as a
+   * garment; a straight cone reads as a traffic bollard.
+   */
+  const prof = [
+    [0.00, 0.00], [0.38, 0.00], [0.40, 0.06], [0.36, 0.16],
+    [0.30, 0.42], [0.27, 0.70], [0.25, 0.95], [0.23, 1.15],
+    [0.26, 1.28], [0.24, 1.38], [0.14, 1.46], [0.00, 1.48],
+  ];
+  const ropePts = prof.map(([r, y]) => new THREE.Vector2(r * S, y * S));
+  const lathe = new THREE.LatheGeometry(ropePts, 14);
+  out.push({ geo: lathe, key: robe });
+
+  // Shoulders and the mantle over them: a flattened sphere does the shoulders,
+  // a second partial lathe the cape.
+  const shoulders = new THREE.SphereGeometry(0.24 * S, 12, 8);
+  shoulders.scale(1.15, 0.72, 0.86);
+  shoulders.translate(0, 1.44 * S, 0);
+  out.push({ geo: shoulders, key: robe });
+
+  const cape = new THREE.CylinderGeometry(0.17 * S, 0.34 * S, 0.46 * S, 12, 1, true);
+  cape.translate(0, 1.30 * S, 0);
+  out.push({ geo: cape, key: dark });
+
+  // Neck and head, turned a little so the figure is not staring dead ahead.
+  const neck = new THREE.CylinderGeometry(0.075 * S, 0.095 * S, 0.13 * S, 8);
+  neck.translate(0, 1.53 * S, 0);
+  out.push({ geo: neck, key: skin });
+
+  const head = new THREE.SphereGeometry(0.135 * S, 14, 11);
+  head.scale(0.92, 1.06, 0.96);
+  head.rotateY(0.22);
+  head.translate(0.012 * S, 1.68 * S, 0.01 * S);
+  out.push({ geo: head, key: skin });
+
+  // Arms. Upper arm hangs, forearm comes forward to hold whatever it holds.
+  for (const sgn of [-1, 1]) {
+    const upper = new THREE.CylinderGeometry(0.062 * S, 0.072 * S, 0.34 * S, 8);
+    upper.rotateZ(sgn * 0.16);
+    upper.translate(sgn * 0.245 * S, 1.24 * S, 0.01 * S);
+    out.push({ geo: upper, key: robe });
+
+    const fore = new THREE.CylinderGeometry(0.052 * S, 0.060 * S, 0.30 * S, 8);
+    fore.rotateX(-0.75);
+    fore.rotateZ(sgn * 0.10);
+    fore.translate(sgn * 0.265 * S, 1.02 * S, 0.14 * S);
+    out.push({ geo: fore, key: o.sleeves === false ? skin : robe });
+
+    const hand = new THREE.SphereGeometry(0.055 * S, 8, 6);
+    hand.translate(sgn * 0.275 * S, 0.90 * S, 0.27 * S);
+    out.push({ geo: hand, key: skin });
+  }
+
+  // Feet peeking from under the hem.
+  for (const sgn of [-1, 1]) {
+    const foot = new THREE.SphereGeometry(0.075 * S, 8, 6);
+    foot.scale(1.0, 0.55, 1.5);
+    foot.translate(sgn * 0.11 * S, 0.035 * S, 0.10 * S);
+    out.push({ geo: foot, key: dark });
+  }
+
+  if (o.halo) {
+    const ring = new THREE.TorusGeometry(0.21 * S, 0.028 * S, 6, 20);
+    ring.translate(0.012 * S, 1.76 * S, -0.10 * S);
+    out.push({ geo: ring, key: 'gold' });
+    // rays, as a crown of short spikes behind the ring
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const ray = new THREE.BoxGeometry(0.022 * S, 0.10 * S, 0.02 * S);
+      ray.rotateZ(a);
+      ray.translate(0.012 * S + Math.sin(a) * 0.27 * S, 1.76 * S + Math.cos(a) * 0.27 * S, -0.10 * S);
+      out.push({ geo: ray, key: 'goldRay' });
+    }
+  }
+
+  if (o.staff) {
+    const staff = new THREE.CylinderGeometry(0.018 * S, 0.018 * S, 1.55 * S, 6);
+    staff.translate(0.30 * S, 0.82 * S, 0.24 * S);
+    out.push({ geo: staff, key: 'gold' });
+    const crook = new THREE.TorusGeometry(0.10 * S, 0.018 * S, 5, 14, Math.PI * 1.35);
+    crook.translate(0.30 * S, 1.60 * S, 0.24 * S);
+    out.push({ geo: crook, key: 'gold' });
+  }
+
+  if (o.book) {
+    const bk = new THREE.BoxGeometry(0.26 * S, 0.035 * S, 0.19 * S);
+    bk.rotateX(-0.5);
+    bk.translate(0, 1.02 * S, 0.28 * S);
+    out.push({ geo: bk, key: o.bookKey || 'altarCloth' });
+  }
+
+  return out;
+}
+
+/**
+ * Place a figure's parts at (x, y, z) and add them to the builder.
+ * Parts come back keyed by material, so this loops and translates.
+ */
+function placeFigure(b, parts, x, y, z, yaw = 0) {
+  for (const { geo, key } of parts) {
+    const gg = geo.clone();
+    if (yaw) gg.rotateY(yaw);
+    gg.translate(x, y, z);
+    b.addGeo(gg, key);
+  }
+}
+
 export function buildChurchInterior(parent, M, CH) {
   const b = new Builder('church-interior');
   const g = new THREE.Group();
@@ -65,6 +203,77 @@ export function buildChurchInterior(parent, M, CH) {
     for (const s of [-1, 1]) {
       b.add(box(0.34, WH - 0.4, 0.72, 2), 'interiorPier',
         { pos: [s * (NW / 2 - inset - 0.03), (WH - 0.4) / 2 + 0.2, z] });
+    }
+  }
+
+  /* ------------------------------------------- STATIONS OF THE CROSS */
+  /**
+   * Fourteen plaques, seven down each wall, hung on the piers at eye height.
+   *
+   * Stations run anticlockwise from the sanctuary: 1-7 up the left (gospel)
+   * wall toward the door, 8-14 back down the right, which is how they are
+   * actually hung and lets a visitor walk the nave without crossing over.
+   *
+   * The piers sit every 4.4 m from apseZ+5.0, so the plaques are hung ON the
+   * piers rather than floating on the plaster between them: a plaque on a pier
+   * reads as fixed to structure, the same plaque on a flat wall reads as a
+   * sticker.
+   */
+  {
+    const pierZs = [];
+    for (let z = apseZ + 5.0; z < facadeZ - 2.5; z += 4.4) pierZs.push(z);
+    const PW = 0.34;              // pier half-thickness, from the pier geometry
+    /**
+     * Plaque size and hang height.
+     *
+     * At 0.46 x 0.60 with a dark emissive they read as a smudge on the plaster
+     * from the middle of the nave — you could see *something* was there but not
+     * that it was a framed picture. Stations are large by design (they carry a
+     * whole scene) and hang at eye height, so 0.62 x 0.80 at y 1.95 with the
+     * frame standing clear of the pier is what actually reads.
+     */
+    const PL_W = 0.62, PL_H = 0.80;
+    let station = 1;
+    // Left wall, sanctuary toward the door.
+    for (let i = 0; i < 7 && i < pierZs.length; i++, station++) {
+      const z = pierZs[i];
+      const x = -(NW / 2 - inset - 0.03) + PW / 2 + 0.03;
+      // frame, standing proud of the pier face
+      b.add(box(0.07, PL_H + 0.10, PL_W + 0.10, 1), 'stationFrame',
+        { pos: [x + 0.015, 1.95, z] });
+      /**
+       * FACING. PlaneGeometry faces local +Z, so rotateY(+pi/2) turns that normal
+       * to +X — toward the nave from the left wall. The first version used
+       * -pi/2 here, which aimed both plaque sets INTO the masonry: the planes
+       * were backface-culled, and what was left was the frame boxes reading as
+       * dark smudges on the plaster. Nothing about it looked like a culling bug.
+       */
+      const pl = new THREE.PlaneGeometry(PL_W, PL_H);
+      pl.rotateY(Math.PI / 2);
+      pl.translate(x + 0.055, 1.95, z);
+      b.addGeo(pl, 'stationPlaque');
+      // a small shelf and a candle cup under each, which is what you actually
+      // see below them in a Philippine church
+      b.add(box(0.10, 0.03, 0.16, 1), 'stationFrame',
+        { pos: [x + 0.05, 1.46, z] });
+      b.add(cylinder(0.035, 0.045, 0.08, 8), 'gold',
+        { pos: [x + 0.05, 1.51, z] });
+    }
+    // Right wall, door back toward the sanctuary.
+    for (let i = pierZs.length - 1; i >= 0 && station <= 14; i--, station++) {
+      const z = pierZs[i];
+      const x = (NW / 2 - inset - 0.03) - PW / 2 - 0.03;
+      b.add(box(0.07, PL_H + 0.10, PL_W + 0.10, 1), 'stationFrame',
+        { pos: [x - 0.015, 1.95, z] });
+      // Mirror of the left wall: normal must point -X from the right wall.
+      const pl = new THREE.PlaneGeometry(PL_W, PL_H);
+      pl.rotateY(-Math.PI / 2);
+      pl.translate(x - 0.055, 1.95, z);
+      b.addGeo(pl, 'stationPlaque');
+      b.add(box(0.10, 0.03, 0.16, 1), 'stationFrame',
+        { pos: [x - 0.05, 1.46, z] });
+      b.add(cylinder(0.035, 0.045, 0.08, 8), 'gold',
+        { pos: [x - 0.05, 1.51, z] });
     }
   }
 
@@ -126,15 +335,37 @@ export function buildChurchInterior(parent, M, CH) {
           rr.translate(Math.sin(a) * 0.92, 6.5 + Math.cos(a) * 0.92, cz - 0.09);
           b.addGeo(rr, 'goldRay');
         }
-        b.add(cylinder(0.34, 0.52, 2.0, 10), 'statueRobed', { pos: [0, 4.05, cz + 0.1] });
-        b.add(sphere(0.3, 10, 8), 'statue', { pos: [0, 5.15, cz + 0.1] });
-        const halo = new THREE.TorusGeometry(0.42, 0.05, 6, 16);
-        halo.translate(0, 5.55, cz + 0.02);
-        b.addGeo(halo, gold);
+        /**
+         * San Nicolas de Tolentino in the central niche.
+         *
+         * The reference photographs show him black-robed with a gilt sunburst
+         * halo, a book held across the chest and a staff. The old stand-in was a
+         * cylinder with a sphere on top, which reads as "something is in this
+         * niche" from the door and as nothing from the rail.
+         */
+        placeFigure(b, robedFigure({
+          robe: 'statueRobed', dark: 'statueRobed', skin: 'statue',
+          halo: true, staff: true, book: true, scale: 1.55,
+        }), 0, 3.36, cz + 0.1);
       } else {
-        for (const ty of [4.5, 6.6]) {
-          b.add(cylinder(0.24, 0.34, 1.15, 8), 'statueRobed', { pos: [bay.x, ty, RZ + 0.44] });
-          b.add(sphere(0.19, 8, 6), 'statue', { pos: [bay.x, ty + 0.7, RZ + 0.44] });
+        /**
+         * Two tiers of flanking saints.
+         *
+         * Each tier gets a different combination of halo / book / staff so the
+         * six figures do not read as six copies of one object. Scale is smaller
+         * than the central figure, as the niches are shallower.
+         */
+        const tiers = [
+          { y: 3.62, halo: true, book: true, staff: false },
+          { y: 5.72, halo: false, book: false, staff: true },
+        ];
+        const variant = bay.x < 0 ? 0 : 1;
+        for (const t of tiers) {
+          placeFigure(b, robedFigure({
+            robe: 'statueRobed', dark: 'statueRobed', skin: 'statue',
+            halo: t.halo, staff: t.staff, book: t.book,
+            scale: 0.95 + variant * 0.05,
+          }), bay.x, t.y, RZ + 0.44, variant ? -0.28 : 0.28);
         }
       }
     }

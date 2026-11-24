@@ -1,4 +1,0 @@
-[
-  { "name": "m-paint", "cam": [-50, 4.5, -33], "look": [-70, 13, -48], "fov": 70, "hour": 15.5,
-    "exec": "(()=>{const C={'church:churchWall':0x00ff00,'church:interior':0x0000ff,'church:churchTrim':0xff0000,'church:woodSoffit':0xffff00,'church:soffitPanel':0x00ffff,'church:brick':0xffffff,'church:glassDark':0xff00ff};let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&C[o.name]!==undefined){o.material=new THREE.MeshBasicMaterial({color:C[o.name]});n++;}});return 'painted '+n})()" }
-]

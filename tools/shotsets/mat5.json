@@ -1,4 +1,0 @@
-[
-  { "name": "m5-hide", "cam": [-50, 4.5, -33], "look": [-70, 13, -48], "fov": 70, "hour": 15.5,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='church:interior'){o.visible=false;n++;}});return 'interior hidden '+n})()" }
-]

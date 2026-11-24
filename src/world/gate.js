@@ -86,12 +86,35 @@ export function buildGate(parent, M, opts = {}) {
 
   /* ------------------------------------------------------------- THE CREST */
   {
+    /**
+     * The gate crest.
+     *
+     * The shield artwork was mounted on a thin torus with nothing behind it, so
+     * from the road it read as a white blob floating in the air over the
+     * railings. A real gate crest is a painted plate bolted to the bars: it needs
+     * a solid dark backing so the pale shield has something to sit on, and the
+     * mounting hardware needs to be visible or it looks pasted on.
+     *
+     * The plate must stay THIN and sit BEHIND the ring. At 0.08 thick and centred
+     * on the torus its dark cap swallowed the shield entirely.
+     */
     const cx = OPEN + 4.6, cy = 3.15, cz = WZ - 0.32;
-    b.addGeo(new THREE.TorusGeometry(1.06, 0.08, 8, 34).translate(cx, cy, cz), 'steel');
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.0, 40), M.crest);
-    disc.position.set(cx, cy, cz + 0.03);
+    // addGeo(g, matKey, collide) takes geometry ALREADY in world space and no
+    // options object, so the transform has to be baked in before the call.
+    // b.add() also returns nothing, so it can never be chained.
+    b.addGeo(
+      cylinder(1.15, 1.15, 0.05, 40).rotateX(Math.PI / 2).translate(cx, cy, cz - 0.06),
+      'ironDark');
+    b.addGeo(new THREE.TorusGeometry(1.20, 0.09, 8, 36).translate(cx, cy, cz + 0.02), 'brass');
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.12, 40), M.crest);
+    disc.position.set(cx, cy, cz + 0.07);
     b.addSign(disc);
-    b.add(box(0.14, 0.6, 0.24, 1), 'ironDark', { pos: [cx, cy - 1.25, cz + 0.42] });
+    // two stays down to the railing, so it hangs rather than floats
+    for (const sgn of [-1, 1]) {
+      b.add(box(0.10, 1.30, 0.10, 1), 'ironDark',
+        { pos: [cx + sgn * 0.85, cy - 1.32, cz + 0.06] });
+    }
+    b.add(box(2.0, 0.12, 0.12, 1), 'ironDark', { pos: [cx, cy - 1.98, cz + 0.06] });
   }
 
   /* --------------------------------------------------- GIANT PINK DCT LETTERS */
@@ -204,34 +227,62 @@ export function buildGate(parent, M, opts = {}) {
 /* ------------------------------------------------------------- letterforms */
 const LH = 2.2, LT = 0.62, LD = 0.52;
 
+/**
+ * D.
+ *
+ * The bowl was a full 180 degree semicircle whose ends sat exactly on the stem,
+ * so it closed into an O and the letter read as a ring beside the pink C. The
+ * bowl should leave the stem at the top and bottom shoulders and return to it,
+ * which is what gives the counter its D shape: sweep a little less than a half
+ * turn and let the flat stem close it.
+ */
 function letterD(x) {
   const parts = [];
   const push = (geo, dx, dy) => parts.push({ geo, x: x + dx, y: dy });
   // stem
   push(box(LT, LH, LD), 0, LH / 2);
-  // bowl: arc of short chords
-  const steps = 12, rx = 0.62, ry = 0.78;
+  // bowl: arc of short chords, leaving ~14 degrees at each shoulder
+  const steps = 14, rx = 0.66, ry = 0.80;
+  const a0 = -Math.PI / 2 + 0.24, a1 = Math.PI / 2 - 0.24;
   for (let i = 0; i <= steps; i++) {
-    const a = -Math.PI / 2 + (i / steps) * Math.PI;
-    const px = LT / 2 + Math.cos(a) * rx * 0.92;
+    const a = a0 + (i / steps) * (a1 - a0);
+    const px = LT / 2 + Math.cos(a) * rx;
     const py = LH / 2 + Math.sin(a) * ry;
-    const g = box(LT * 0.95, 0.42, LD);
-    g.rotateZ(-a);
+    const g = box(LT * 0.95, 0.46, LD);
+    g.rotateZ(-a);                          // chord along the tangent
     push(g, px, py);
+  }
+  // shoulders, tying the open ends of the bowl back into the stem
+  for (const sgn of [-1, 1]) {
+    const g = box(0.72, LT * 0.92, LD);
+    g.rotateZ(sgn * 0.30);
+    push(g, LT / 2 + 0.30, LH / 2 + sgn * (ry * 0.94));
   }
   return parts;
 }
 
+/**
+ * C.
+ *
+ * This swept 1.84 pi — 331 degrees — leaving a 29 degree gap directly facing the
+ * road. A C is read from its opening, and at 29 degrees there is nothing to read:
+ * from the highway the giant letter looked like a solid pink donut hung on the
+ * wall. Real caps open about 100 degrees, and each chord has to be rotated
+ * perpendicular to its radius, or the strokes fan across the counter instead of
+ * following the arc.
+ */
 function letterC(x) {
   const parts = [];
-  const R = 0.86;
-  const steps = 14;
+  const R = 0.88;
+  const OPEN = Math.PI * 0.56;              // ~101 degrees of gap
+  const span = Math.PI * 2 - OPEN;
+  const steps = 16;
   for (let i = 0; i <= steps; i++) {
-    const a = -Math.PI * 0.42 + (i / steps) * Math.PI * 1.84;
-    const px = Math.cos(a - Math.PI / 2) * R;
-    const py = Math.sin(a - Math.PI / 2) * R;
-    const g = box(LT, 0.44, LD);
-    g.rotateZ(a);
+    const a = OPEN / 2 + (i / steps) * span; // start past the gap, sweep around
+    const px = Math.cos(a) * R;
+    const py = Math.sin(a) * R;
+    const g = box(LT, 0.50, LD);
+    g.rotateZ(a + Math.PI / 2);             // chord perpendicular to the radius
     parts.push({ geo: g, x: x + px, y: LH / 2 + py });
   }
   return parts;
