@@ -1,0 +1,2 @@
+[{"name":"cp3","cam":[-86.0,1.7,-30],"look":[-86.0,1.7,20],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;let m=null;S.traverse(o=>{if(o.name==='main:ceilingBoard')m=o;});const p=m.geometry.attributes.position;let zmin=1e9,zmax=-1e9,xmin=1e9,xmax=-1e9,n=p.count;for(let i=0;i<n;i++){const z=p.getZ(i),x=p.getX(i);if(z<zmin)zmin=z;if(z>zmax)zmax=z;if(x<xmin)xmin=x;if(x>xmax)xmax=x;}return JSON.stringify({verts:n,zRange:[+zmin.toFixed(2),+zmax.toFixed(2)],xRange:[+xmin.toFixed(2),+xmax.toFixed(2)]})})()"}]

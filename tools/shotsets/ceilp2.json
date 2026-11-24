@@ -1,0 +1,2 @@
+[{"name":"cp2","cam":[-86.0,1.7,-30],"look":[-86.0,1.7,20],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;let m=null;S.traverse(o=>{if(o.name==='main:ceilingBoard')m=o;});if(!m)return 'no ceilingBoard mesh';const g=m.geometry;g.computeBoundingBox();const bb=g.boundingBox;const wp=m.getWorldPosition(new T.Vector3());return JSON.stringify({worldPos:wp.toArray().map(v=>+v.toFixed(2)),bb:[bb.min.toArray().map(v=>+v.toFixed(2)),bb.max.toArray().map(v=>+v.toFixed(2))],visible:m.visible,frustumCulled:m.frustumCulled})})()"}]

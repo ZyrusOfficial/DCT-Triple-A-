@@ -1,0 +1,2 @@
+[{"name":"bp","cam":[-86.0,1.75,14.0],"look":[-86.0,1.7,50.0],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const rc=new T.Raycaster(new T.Vector3(-86,1.7,14),new T.Vector3(0,0,1));const h=rc.intersectObjects(S.children,true).filter(x=>x.object.name.startsWith('main'));return JSON.stringify(h.slice(0,6).map(x=>({n:x.object.name,d:+x.distance.toFixed(2),p:[+x.point.x.toFixed(2),+x.point.y.toFixed(2),+x.point.z.toFixed(2)]})))})()"}]

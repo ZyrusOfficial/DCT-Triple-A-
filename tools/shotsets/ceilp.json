@@ -1,0 +1,2 @@
+[{"name":"cp","cam":[-86.0,1.7,-30],"look":[-86.0,1.7,20],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const o=[];for(const z of [-30,-15,0,9.4,25,45]){const rc=new T.Raycaster(new T.Vector3(-86,1.7,z),new T.Vector3(0,1,0));const h=rc.intersectObjects(S.children,true).filter(x=>x.object.name.startsWith('main'));o.push('z='+z+' UP: '+(h[0]?h[0].object.name.replace('main:','')+'@y'+h[0].point.y.toFixed(2):'SKY'));}return JSON.stringify(o)})()"}]

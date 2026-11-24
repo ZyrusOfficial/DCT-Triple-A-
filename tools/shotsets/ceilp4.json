@@ -1,0 +1,2 @@
+[{"name":"cp4","cam":[-86.0,1.7,-30],"look":[-86.0,1.7,20],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;let m=null;S.traverse(o=>{if(o.name==='main:ceilingBoard')m=o;});const rc=new T.Raycaster(new T.Vector3(-86,3.0,-30),new T.Vector3(0,1,0));const all=rc.intersectObject(m,true);const rc2=new T.Raycaster(new T.Vector3(-86,1.7,-30),new T.Vector3(0,1,0));const all2=rc2.intersectObject(m,true);return JSON.stringify({fromY3:all.map(x=>+x.point.y.toFixed(2)),fromY17:all2.map(x=>+x.point.y.toFixed(2)),side:m.material.side})})()"}]
