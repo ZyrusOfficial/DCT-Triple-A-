@@ -546,6 +546,15 @@ export function buildMainBuilding(parent, M, opts = {}) {
     const ccZ0 = z0 + ccBay0 * bayW;
     const ccZ1 = z0 + (ccBay1 + 1) * bayW;
     const ccMid = (ccZ0 + ccZ1) / 2;       // == zMid, the door's own centre
+    /**
+     * Half-width of the clear LOBBY between the two flanking stair halls.
+     *
+     * The passage occupies two bays; the stair halls take 6.5 m at each end of
+     * that run, leaving this much clear in the middle. It is deliberately close
+     * to half the entrance projection's width so the lobby you walk into is
+     * roughly the width of the thing you walked through.
+     */
+    const LOBBY_HALF = 3.1;
 
     for (let f = 0; f < N; f++) {
       const y0 = f * FH;
@@ -767,31 +776,46 @@ export function buildMainBuilding(parent, M, opts = {}) {
        * the middle, so the entrance bay belongs to the entrance.
        */
       if (f < N - 1) {
-        for (const sx of [-1, 1]) {
-          for (const endSign of [-1, 1]) {
-            const xlSt = sx * (xHalf - 1.5);
-            const steps = 22;
-            const rise = FH / steps;
-            const run = 0.29;
-            // flight springs from the end wall and climbs inward
-            const zStart = endSign < 0 ? WT + 0.35 : W - WT - 0.35;
-            const zC = zStart + endSign * (steps * run) / 2;
-            for (let i = 0; i < steps; i++) {
-              const zStep = zStart + endSign * (i + 0.5) * run;
-              b.add(box(run * 0.96, rise * (i + 1), 2.9, 1), 'concreteTrim', {
-                pos: [axOf(zStep), y0 + rise * (i + 1) / 2, azOf(xlSt)],
-              });
-            }
-            // the enclosing shaft wall, on the corridor side of the flight
-            b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
-              pos: [axOf(zC), y0 + FH / 2, azOf(xlSt + sx * 1.5)],
+        /**
+         * Two dog-leg stair halls, flanking the entrance lobby.
+         *
+         * They were first pushed out to the far ends of the building to get them
+         * out of the doorway, but that left the lobby 19 m wide — two whole bays
+         * of clear floor, five times the width of the entrance projection, with
+         * nothing in it. The passage is two bays wide whatever happens, because
+         * the door falls on a bay boundary; so the flanking 6.5 m strips on each
+         * side are now the stair halls. That gives the extra width a purpose,
+         * puts the stairs where people actually arrive, and leaves a 6 m lobby
+         * between them that matches the entrance.
+         *
+         * Each flight runs ACROSS the strip, against the outer wall, from the
+         * lobby end of the strip toward the bay boundary.
+         */
+        for (const endSign of [-1, 1]) {
+          const sgn = -endSign;   // endSign -1 = the low-zLocal strip
+          const xlSt = sgn * (xHalf - 1.45);
+          const steps = 22;
+          const rise = FH / steps;
+          const run = 0.29;
+          // strip spans ccZ0..ccZ0+LOBBY/2 on one side, and the mirror on the other
+          const stripNear = sgn < 0 ? ccZ0 : ccZ1 - LOBBY_HALF;
+          const zStart = sgn < 0 ? stripNear + 0.35 : stripNear + LOBBY_HALF - 0.35;
+          const dir = sgn < 0 ? +1 : -1;
+          for (let i = 0; i < steps; i++) {
+            const zStep = zStart + dir * (i + 0.5) * run;
+            b.add(box(run * 0.96, rise * (i + 1), 2.1, 1), 'concreteTrim', {
+              pos: [axOf(zStep), y0 + rise * (i + 1) / 2, azOf(xlSt)],
             });
-            for (let i = 0; i < steps; i += 3) {
-              b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
-                pos: [axOf(zStart + endSign * (i + 0.5) * run), y0 + rise * i + 0.48,
-                      azOf(xlSt - sx * 1.35)],
-              });
-            }
+          }
+          // shaft wall between the flight and the lobby
+          b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
+            pos: [axOf(zStart + dir * (steps * run) / 2), y0 + FH / 2, azOf(xlSt - sgn * 1.35)],
+          });
+          for (let i = 0; i < steps; i += 3) {
+            b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
+              pos: [axOf(zStart + dir * (i + 0.5) * run), y0 + rise * i + 0.48,
+                    azOf(xlSt + sgn * 1.15)],
+            });
           }
         }
       }
@@ -841,19 +865,46 @@ export function buildMainBuilding(parent, M, opts = {}) {
        * it. Card-carrying z-fighting, and the fix is to lift the tile clear.
        */
       const ccLen = ccZ1 - ccZ0;
-      b.add(box(ccLen, 0.06, roomD, 2.2), 'tileRed', {
+      const hallW = ccLen / 2 - LOBBY_HALF;
+      // Clear lobby: terracotta, exactly as wide as the framed entrance hall.
+      b.add(box(2 * LOBBY_HALF, 0.06, roomD, 2.2), 'tileRed', {
         pos: [axOf(ccMid), y0 + floorY + 0.01, azOf(xCrossMid)],
       });
-      // Its own ceiling, at the same soffit height as the rest of the floor.
+      // Flanking stair halls: vinyl, at the ordinary classroom level.
+      for (const sgn of [-1, 1]) {
+        b.add(box(hallW, 0.06, roomD, 2.6), 'classroomFloor', {
+          pos: [axOf(ccMid + sgn * (LOBBY_HALF + hallW / 2)), y0 + floorY, azOf(xCrossMid)],
+        });
+      }
+      // The ceiling still spans the whole run, lobby and both stair halls.
       b.add(box(ccLen, 0.10, roomD + 0.4, 3), 'ceilingBoard', {
         pos: [axOf(ccMid), y0 + H1, azOf(xCrossMid)],
       });
-      // Its two side walls are the flanks of the passage: the floor-plate edges
-      // of the bays it occupies, left standing when the rooms were suppressed.
+      /**
+       * The outer flanks of the passage: the floor-plate edges of the two bays
+       * it occupies, left standing when the rooms were suppressed.
+       */
       for (const sgn of [-1, 1]) {
         b.add(box(0.10, H1, roomD, 3), 'interiorPlaster', {
           pos: [axOf(ccMid + sgn * (ccLen / 2 + 0.05)), y0 + H1 / 2, azOf(xCrossMid)],
         });
+      }
+      /**
+       * A pilaster at each corner of the clear lobby, framing it.
+       *
+       * Not a wall: the stair halls have to stay open to the lobby or the stairs
+       * sit behind a door in a corner nobody finds. Two square piers where the
+       * entrance hall ends and the stair halls begin are enough to stop the
+       * 19 m run reading as one huge empty room — and square concrete piers are
+       * what the reference photographs show anyway.
+       */
+      for (const sgn of [-1, 1]) {
+        for (const face of [-1, 1]) {
+          b.add(box(0.42, H1, 0.42, 3), 'concreteTrim', {
+            pos: [axOf(ccMid + sgn * LOBBY_HALF), y0 + H1 / 2,
+                  azOf(xCrossMid + face * (roomD / 2 - 0.25))],
+          });
+        }
       }
     }
 
