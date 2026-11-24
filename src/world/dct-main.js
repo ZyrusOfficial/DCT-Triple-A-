@@ -503,12 +503,6 @@ export function buildMainBuilding(parent, M, opts = {}) {
     const bays = 10;
     const bayW = LZ / bays;                // 9.51 per bay, along the length
     /**
-     * Which bay looks onto the entrance. The door is at world z = MAIN.z, which
-     * is zLocal = W/2; bays start at zLocal = WT and step by bayW.
-     */
-    const entryBay = Math.floor((W / 2 - WT) / bayW);
-
-    /**
      * zLocal/xLocal -> authored XZ. See the frame note above.
      * zLocal is measured from the building's low-Z end; xLocal from the
      * corridor centreline, positive toward the façade (+X in world terms).
@@ -538,6 +532,21 @@ export function buildMainBuilding(parent, M, opts = {}) {
     const z0 = WT;                         // zLocal of the clear interior's start
     const xHalf = LX / 2;                  // 7.3
 
+    /**
+     * The entrance passage occupies whole bays, never part of one.
+     *
+     * zMid = 48 lands precisely on a bay boundary, so the door sits between bays
+     * 4 and 5 (zLocal 38.49..48.00 and 48.00..57.51). Taking both gives the lobby
+     * a 19 m frontage — a fifth of the building, for a door in the middle of it —
+     * and, more to the point, lets the corridor wall be a plain run of solid
+     * spans and openings with nothing straddling a bay boundary.
+     */
+    const ccBay0 = Math.floor((zMid - WT) / bayW) - 1;
+    const ccBay1 = Math.floor((zMid - WT) / bayW);
+    const ccZ0 = z0 + ccBay0 * bayW;
+    const ccZ1 = z0 + (ccBay1 + 1) * bayW;
+    const ccMid = (ccZ0 + ccZ1) / 2;       // == zMid, the door's own centre
+
     for (let f = 0; f < N; f++) {
       const y0 = f * FH;
       const floorY = f === 0 ? 0.085 : 0.025;
@@ -559,63 +568,65 @@ export function buildMainBuilding(parent, M, opts = {}) {
       });
 
       /* --------------------------------------------- corridor walls + doors */
+      /**
+       * The corridor wall, drawn as a run of SOLID spans with openings punched
+       * through them.
+       *
+       * The older shape of this loop was one classroom door per bay, positioned
+       * relative to the bay's own centre, plus — on the entrance bay only — a
+       * wider opening positioned absolutely at zMid. Two things made that fail.
+       * zMid is a bay BOUNDARY (48.0 on a 9.51 m pitch starting at 0.45), not a
+       * bay centre, so the entrance straddles bays 4 and 5; and a blanket "skip
+       * the whole entry bay" removed bay 5's door but left bay 4 sealed and
+       * furnished, walling the passage off one metre from its own threshold.
+       *
+       * So the wall is now built from a per-side list of openings, each a
+       * (centre, width) in zLocal, and the solid spans fill the gaps between
+       * them. Snapping the entrance to whole bays is what makes this simple: the
+       * passage is exactly bays [ccBay0, ccBay1], so there is no partial bay to
+       * reason about and no doorway half-swallowed by a wall.
+       */
+      const openS = [];       // { c, w } in zLocal, per side
+      for (let i = 0; i < bays; i++) {
+        if (i >= ccBay0 && i <= ccBay1) {
+          // replaced by the cross-corridor mouth
+          openS.push({ c: z0 + i * bayW, w: bayW, wide: true });
+          continue;
+        }
+        openS.push({ c: z0 + i * bayW + 0.62, w: 1.0 });
+      }
+
       for (const sx of [-1, 1]) {
         const azWall = azOf(sx * cW / 2);
-        for (let i = 0; i < bays; i++) {
-          const zl = z0 + (i + 0.5) * bayW;      // bay centre, along the length
-          /**
-           * The bay that faces the entrance gets its corridor opening where the
-           * cross-corridor actually runs, not at the bay's usual door position.
-           *
-           * Every other bay puts its door near the bay start (bayW/2 in from the
-           * centre). This one would land at zLocal 52.7 — world z 4.7 — while the
-           * cross-corridor is centred on zLocal 48, world z 9.4. Four and a half
-           * metres apart: the passage reached the wall and stopped.
-           *
-           * It is also wider (2.0 m instead of 1.0) and gets no leaf, because a
-           * door swinging across a lobby threshold is just an obstruction.
-           */
-          const isEntryOpening = (i === entryBay && sx > 0);
-          const doorW = isEntryOpening ? 2.0 : 1.0;
-          const doorZl = isEntryOpening
-            ? zMid - doorW / 2
-            : zl - bayW / 2 + doorW / 2 + 0.12;
-          const segW = bayW - doorW - (isEntryOpening ? 0 : 0.24);
+        // solid wall from the end of one opening to the start of the next
+        const edges = [z0];
+        for (const o of openS) { edges.push(o.c, o.c + o.w); }
+        edges.push(z0 + bays * bayW);
 
-          /**
-           * Wall either side of the opening (long in authored X).
-           *
-           * For the entry bay the opening is off-centre in the bay, so the two
-           * stubs are worked out from the bay's own ends rather than from the
-           * opening: bayStart .. openingS and openingN .. bayEnd.
-           */
-          const bayStart = zl - bayW / 2;
-          const bayEnd = zl + bayW / 2;
-          const opS0 = doorZl, opS1 = doorZl + doorW;
-          const stubS = opS0 - bayStart;
-          const stubN = bayEnd - opS1;
-          if (stubS > 0.02) {
-            b.add(box(stubS, H1, 0.12, 3), 'interiorPlaster', {
-              pos: [axOf(bayStart + stubS / 2), y0 + H1 / 2, azWall],
+        for (let k = 0; k < edges.length; k += 2) {
+          const a = edges[k], bEnd = edges[k + 1];
+          if (bEnd - a > 0.02) {
+            b.add(box(bEnd - a, H1, 0.12, 3), 'interiorPlaster', {
+              pos: [axOf((a + bEnd) / 2), y0 + H1 / 2, azWall],
             });
           }
-          if (stubN > 0.02) {
-            b.add(box(stubN, H1, 0.12, 3), 'interiorPlaster', {
-              pos: [axOf(opS1 + stubN / 2), y0 + H1 / 2, azWall],
-            });
-          }
-          // head over the door
-          b.add(box(doorW + 0.24, H1 - 2.14, 0.12, 3), 'interiorPlaster', {
-            pos: [axOf(doorZl), y0 + 2.14 + (H1 - 2.14) / 2, azWall],
+        }
+
+        for (const o of openS) {
+          const doorW = o.w, doorZl = o.c;
+          // head over the opening
+          b.add(box(doorW, H1 - 2.14, 0.12, 3), 'interiorPlaster', {
+            pos: [axOf(doorZl + doorW / 2), y0 + 2.14 + (H1 - 2.14) / 2, azWall],
           });
+          if (o.wide) continue;   // a passage mouth, not a doorway: no trim, no leaf
           // architrave: flat standing-band on the corridor face
-          for (const q of [-1, 1]) {
+          for (const q of [0, 1]) {
             b.add(box(0.07, 2.10, 0.10, 1), 'wood', {
-              pos: [axOf(doorZl + q * (doorW / 2 + 0.035)), y0 + 1.05, azWall - sx * 0.02],
+              pos: [axOf(doorZl + (q === 0 ? -0.035 : doorW + 0.035)), y0 + 1.05, azWall - sx * 0.02],
             });
           }
-          b.add(box(doorW + 0.2, 0.08, 0.10, 1), 'wood', {
-            pos: [axOf(doorZl), y0 + 2.14, azWall - sx * 0.02],
+          b.add(box(doorW + 0.08, 0.08, 0.10, 1), 'wood', {
+            pos: [axOf(doorZl + doorW / 2), y0 + 2.14, azWall - sx * 0.02],
           });
           /**
            * OPEN DOOR, swung back inside the classroom.
@@ -629,18 +640,14 @@ export function buildMainBuilding(parent, M, opts = {}) {
            * thickness goes in the box's THIRD argument because it ends up
            * across the corridor.
            */
-          if (!isEntryOpening) {
-            b.add(box(0.045, 2.02, doorW, 1), 'wood', {
-              pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.52],
-              rot: [0, Math.PI / 2 * 0.88, 0],
-            });
-          }
-          // borrowed light high in the wall
-          if (!isEntryOpening) {
-            b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
-              pos: [axOf(zl + bayW * 0.18), y0 + 2.52, azWall + sx * 0.08],
-            });
-          }
+          b.add(box(0.045, 2.02, doorW, 1), 'wood', {
+            pos: [axOf(doorZl - 0.02), y0 + 1.01, azWall + sx * 0.52],
+            rot: [0, Math.PI / 2 * 0.88, 0],
+          });
+          // borrowed light high in the wall, beside the leaf
+          b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
+            pos: [axOf(doorZl + bayW * 0.34), y0 + 2.52, azWall + sx * 0.08],
+          });
         }
       }
 
@@ -653,7 +660,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
            * that is where the cross-corridor comes through, so a classroom here
            * would block the way in.
            */
-          if (i === entryBay && sx > 0) continue;
+          if (i >= ccBay0 && i <= ccBay1 && sx > 0) continue;
           // across-the-building bounds of this room, in xLocal
           const xl0 = sx < 0 ? -xHalf : cW / 2;
           const xl1 = sx < 0 ? -cW / 2 : xHalf;
@@ -833,18 +840,19 @@ export function buildMainBuilding(parent, M, opts = {}) {
        * blue-grey vinyl with a terracotta spine visible only beyond the end of
        * it. Card-carrying z-fighting, and the fix is to lift the tile clear.
        */
-      b.add(box(2.4, 0.06, roomD, 2.2), 'tileRed', {
-        pos: [axOf(W / 2), y0 + floorY + 0.01, azOf(xCrossMid)],
+      const ccLen = ccZ1 - ccZ0;
+      b.add(box(ccLen, 0.06, roomD, 2.2), 'tileRed', {
+        pos: [axOf(ccMid), y0 + floorY + 0.01, azOf(xCrossMid)],
       });
       // Its own ceiling, at the same soffit height as the rest of the floor.
-      b.add(box(2.6, 0.10, roomD + 0.4, 3), 'ceilingBoard', {
-        pos: [axOf(W / 2), y0 + H1, azOf(xCrossMid)],
+      b.add(box(ccLen, 0.10, roomD + 0.4, 3), 'ceilingBoard', {
+        pos: [axOf(ccMid), y0 + H1, azOf(xCrossMid)],
       });
-      // Side walls, so it reads as a passage and not as an open end into the
-      // room it replaced. 2.4 m clear between them.
+      // Its two side walls are the flanks of the passage: the floor-plate edges
+      // of the bays it occupies, left standing when the rooms were suppressed.
       for (const sgn of [-1, 1]) {
         b.add(box(0.10, H1, roomD, 3), 'interiorPlaster', {
-          pos: [axOf(W / 2 + sgn * 1.25), y0 + H1 / 2, azOf(xCrossMid)],
+          pos: [axOf(ccMid + sgn * (ccLen / 2 + 0.05)), y0 + H1 / 2, azOf(xCrossMid)],
         });
       }
     }
