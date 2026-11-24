@@ -777,40 +777,44 @@ export function buildMainBuilding(parent, M, opts = {}) {
        */
       if (f < N - 1) {
         /**
-         * Two dog-leg stair halls, flanking the entrance lobby.
+         * Two stair halls flanking the entrance lobby, each with a straight
+         * flight against its outer wall.
          *
-         * They were first pushed out to the far ends of the building to get them
-         * out of the doorway, but that left the lobby 19 m wide — two whole bays
-         * of clear floor, five times the width of the entrance projection, with
-         * nothing in it. The passage is two bays wide whatever happens, because
-         * the door falls on a bay boundary; so the flanking 6.5 m strips on each
-         * side are now the stair halls. That gives the extra width a purpose,
-         * puts the stairs where people actually arrive, and leaves a 6 m lobby
-         * between them that matches the entrance.
+         * Two things were wrong with the first attempt. The side mapping was
+         * inverted — sgn = +1 computed its strip start as ccZ1 - LOBBY_HALF, so
+         * the flight began at zLocal 57.2 and climbed six metres back ACROSS the
+         * lobby instead of along the strip. And the flight was 22 treads at a
+         * 0.29 m going, which is 6.4 m of run to climb 3.9 m: fine in an airport,
+         * absurd in a school corridor, and longer than the strip is wide.
          *
-         * Each flight runs ACROSS the strip, against the outer wall, from the
-         * lobby end of the strip toward the bay boundary.
+         * 12 risers at 0.325 m with a 0.28 m going climbs one 3.9 m storey in
+         * 3.4 m, which fits the 6.4 m strip with room for the landing.
          */
-        for (const endSign of [-1, 1]) {
-          const sgn = -endSign;   // endSign -1 = the low-zLocal strip
-          const xlSt = sgn * (xHalf - 1.45);
-          const steps = 22;
+        for (const sgn of [-1, 1]) {
+          const xlSt = sgn * (xHalf - 4.2);
+          const steps = 12;
           const rise = FH / steps;
-          const run = 0.29;
-          // strip spans ccZ0..ccZ0+LOBBY/2 on one side, and the mirror on the other
-          const stripNear = sgn < 0 ? ccZ0 : ccZ1 - LOBBY_HALF;
-          const zStart = sgn < 0 ? stripNear + 0.35 : stripNear + LOBBY_HALF - 0.35;
+          const run = 0.28;
+          // The strip runs from the bay boundary inward to the lobby edge, so
+          // the flight springs from the boundary and climbs toward the lobby.
+          const zBoundary = sgn < 0 ? ccZ0 : ccZ1;
           const dir = sgn < 0 ? +1 : -1;
+          const zStart = zBoundary + dir * 0.35;
           for (let i = 0; i < steps; i++) {
             const zStep = zStart + dir * (i + 0.5) * run;
             b.add(box(run * 0.96, rise * (i + 1), 2.1, 1), 'concreteTrim', {
               pos: [axOf(zStep), y0 + rise * (i + 1) / 2, azOf(xlSt)],
             });
           }
-          // shaft wall between the flight and the lobby
-          b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
-            pos: [axOf(zStart + dir * (steps * run) / 2), y0 + FH / 2, azOf(xlSt - sgn * 1.35)],
-          });
+          /**
+           * NO shaft wall between the flight and the lobby.
+           *
+           * There used to be a full-height plaster panel here, and it did
+           * exactly what a wall does: hid the stairs. From the door you saw a
+           * blank face, and the stair hall read as an empty room because the
+           * only thing in it was behind the panel. A handrail and the flight
+           * itself are all the separation a school stair needs.
+           */
           for (let i = 0; i < steps; i += 3) {
             b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
               pos: [axOf(zStart + dir * (i + 0.5) * run), y0 + rise * i + 0.48,
