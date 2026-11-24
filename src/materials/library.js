@@ -514,8 +514,16 @@ export function buildMaterials() {
    * dimmer, more matte gold of an embroidered frontal.
    */
   M.altarFrontal = STD({
-    color: 0xa8812f, roughness: 0.46, metalness: 0.62,
-    emissive: 0x35240a, emissiveIntensity: 0.14,
+    /**
+     * The antependium was 0.62 metalness with a brass-ish emissive, which under a
+     * point light 1.4 m away became a mirror: at eye level, 1.5 m from the altar,
+     * the frontal filled the whole lower half of the frame with a glowing gold
+     * wall. A real embroidered frontal is CLOTH — it is mostly diffuse, with the
+     * metal in the orphrey threads only. So: low metalness, high roughness, and
+     * a darker base so it reads in shadow rather than glowing through it.
+     */
+    color: 0x7d5f22, roughness: 0.72, metalness: 0.15,
+    emissive: 0x1e1505, emissiveIntensity: 0.1,
   });
   /** Sanctuary lamp glass: deep red, strongly emissive — a lamp that never goes out. */
   M.lampRed = STD({

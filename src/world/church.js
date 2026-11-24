@@ -688,8 +688,20 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
   // into a white bloom (the marble and cloth both clipped to pure white, so the
   // altar read as a glowing slab). Drop it, pull it back behind the retablo so
   // it rakes the reredos instead of spot-lighting the mensa, and warm it.
-  const altarLight = new THREE.PointLight(0xffe0ad, 7.5, 22, 1.5);
-  altarLight.position.set(0, WH - 3.4, -NL / 2 + 1.2);
+  /**
+   * Sanctuary light. Warm, low, and placed FORWARD of the retablo.
+   *
+   * Two things had to be fixed here and the second only showed up at 2 m.
+   * First it was intensity 18 hung at 9.4 m over the altar, which clipped the
+   * mensa to flat white. Then, pulled back behind the reredos to stop that, it
+   * sat directly above the antependium and put a hot specular pool on the gold
+   * frontal — the altar read as lit from inside. Moving it forward of the
+   * retablo and up to cornice height means it lights the FLOOR and the altar
+   * from the front-top, the way the real pendant fixtures hang, and both the
+   * frontal and the mensa fall outside its strongest specular lobe.
+   */
+  const altarLight = new THREE.PointLight(0xffdcae, 5.0, 18, 1.7);
+  altarLight.position.set(0, WH - 2.9, -NL / 2 + 3.4);
   /**
    * Low fill, standing in for floor bounce.
    *
@@ -701,8 +713,20 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
    * give the floor and pews a base level so the nave does not read as a pit
    * below a bright ceiling.
    */
-  const floorFill = new THREE.PointLight(0xffe9cc, 14, 34, 1.0);
-  floorFill.position.set(0, 1.6, -2.0);
+  const floorFill = new THREE.PointLight(0xffe9cc, 9, 26, 1.35);
+  /**
+   * z matters more than it looks.
+   *
+   * This was (0, 1.6, -2.0) at intensity 14 with decay 1.0. The altar sits at
+   * lz -15.8, so the fill light stood 13.8 m in front of it at 1.6 m — head
+   * height — and with that shallow decay its 14 units were still dumping nearly
+   * a third of their power into the antependium from straight on, which is the
+   * hard yellow pool that survived every change to the sanctuary light. Pulled
+   * back to mid-nave, dropped, shortened in range and decayed properly, it does
+   * the job it was written for (lifting the floor and pews out of the dark)
+   * without touching the chancel.
+   */
+  floorFill.position.set(0, 1.1, NL / 2 - 9.0);
   group.add(naveLight, altarLight, floorFill);
   churchLights.push(naveLight, altarLight, floorFill);
 

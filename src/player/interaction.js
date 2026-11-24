@@ -271,6 +271,108 @@ export function registerInteractions(inter, scene, refs, L) {
       + 'set in a moulded surround.',
   });
 
+  /* ------------------------------------------------ inside the shrine nave */
+  /**
+   * The interior is the most detailed thing on the site and had no zones at all,
+   * so a visitor could walk the whole nave with nothing to press. These are
+   * placed in world coordinates using the surveyed local->world mapping:
+   *   world_x = cx + lz, world_z = cz - lx   (cx -73.8, cz -51.3, rotY +pi/2)
+   * Altar centre is (-89.6, -51.3); the lamp hangs at (-87.0, -48.7).
+   */
+  const chX = L.church.x, chZ = L.church.z;
+  const toWorld = (lx, lz) => ({ x: chX + lz, z: chZ - lx });
+
+  {
+    // -- the high altar
+    const a = toWorld(0, -15.8);
+    inter.add({
+      x: a.x, z: a.z, r: 3.2, y: 1.8, range: 3.5,
+      label: 'Approach the high altar',
+      message: 'A cream marble mensa on a stepped foot, with a gilt crucifix and '
+        + 'six candles. The antependium is embroidered gold on crimson. The '
+        + 'sanctuary lamp burns to the left of it.',
+    });
+    // -- the retablo
+    const r = toWorld(0, -17.4);
+    inter.add({
+      x: r.x, z: r.z, r: 3.0, y: 2.6, range: 4.0,
+      label: 'Look at the retablo',
+      message: 'Three bays under an arched pediment, the centre one carrying the '
+        + 'crucifix and the two flanking ones a tier of niches with Dominican '
+        + 'saints. Dark twisted columns with gilt Corinthian capitals — the '
+        + 'whole reredos was restored in the 1990s.',
+    });
+    // -- San Nicolas in the centre niche
+    const n = toWorld(0, -16.6);
+    inter.add({
+      x: n.x, z: n.z, r: 2.4, y: 2.2, range: 3.0,
+      label: 'Look at the image of San Nicolas',
+      message: 'San Nicolas de Tolentino in black habit, holding a book and a '
+        + 'lily, with a gilt sunburst halo behind his head. He is shown holding '
+        + 'a dish of bread rolls too — the sign by which he is recognised when '
+        + 'he appears in the Augustinian legends.',
+    });
+    // -- the sanctuary lamp
+    const l = toWorld(-2.6, -13.2);
+    inter.add({
+      x: l.x, z: l.z, r: 1.8, y: 1.5, range: 3.0,
+      label: 'Look at the sanctuary lamp',
+      message: 'A red glass cup in a gilt canopy, hung on three chains from the '
+        + 'roof boss. It is kept burning whenever the Blessed Sacrament is '
+        + 'reserved, which is why it is the one warm light in the nave.',
+    });
+    // -- the pews, alternating down the nave
+    for (let i = 0; i < 5; i++) {
+      for (const side of [-1, 1]) {
+        const p = toWorld(side * 5.6, 6.0 - i * 4.2);
+        inter.add({
+          x: p.x, z: p.z, r: 1.5, y: 1.2, range: 3.0,
+          label: 'Sit in the pew',
+          run: () => {
+            if (inter._pewSitting === p) { inter._pewSitting = null; return 'You stand and step out into the aisle.'; }
+            inter._pewSitting = p;
+            return 'Dark hardwood, worn smooth at the ends where hands rest. The '
+              + 'nave is cool and smells of candle wax and old varnish.';
+          },
+        });
+      }
+    }
+    /**
+     * Stations of the Cross: seven piers up each wall.
+     *
+     * The pier line is derived, not copied by eye. In the interior's local frame
+     * the apse is at lz = -naveL/2 = -19, the altar sits 3.2 m in front of it
+     * (lz -15.8), and church-interior.js puts the first station pier at
+     * apseZ + 5.0 and then every 4.4 m. L.church has no apseZ field, so writing
+     * `L.church.apseZ ?? fallback` here silently took the fallback and put all
+     * fourteen plaques in the wrong place. Derive it from naveL instead.
+     */
+    const apseZ = -L.church.naveL / 2;
+    for (let i = 0; i < 7; i++) {
+      for (const side of [-1, 1]) {
+        const p = toWorld(side * 9.4, apseZ + 5.0 + i * 4.4);
+        inter.add({
+          x: p.x, z: p.z, r: 1.4, y: 1.95, range: 3.0,
+          label: `Read Station ${side < 0 ? i + 1 : 14 - i}`,
+          message: 'A carved gilt frame on the pier with a painted scene in '
+            + 'relief. The stations run anticlockwise from the sanctuary, so the '
+            + 'numbers climb up the gospel side and back down the epistle side.',
+        });
+      }
+    }
+    // -- the side doors
+    for (const side of [-1, 1]) {
+      const p = toWorld(side * 9.0, 2.0);
+      inter.add({
+        x: p.x, z: p.z, r: 2.0, y: 1.2, range: 3.0,
+        label: 'Try the side door',
+        message: 'A pair of panelled timber leaves under a glazed transom, in a '
+          + 'moulded surround. Locked from the inside during services, but open '
+          + 'through the week for the people who come in to pray.',
+      });
+    }
+  }
+
   /* ------------------------------------------------------- the weather */
   inter.add({
     x: -20, z: -50, r: 3.0, y: 1.0,
@@ -287,6 +389,93 @@ export function registerInteractions(inter, scene, refs, L) {
       if (h < 17) return 'Late afternoon. Shadows are lengthening across the plaza.';
       return 'Golden hour. The shrine façade is lit almost straight on from the west.';
     },
+  });
+
+  /* ------------------------------------------- campus furniture, walkway spine */
+  /**
+   * The yard furniture built in index.js had no interaction zones at all: the
+   * benches, planters, bins, notice board, bike rack and flagpole were modelled
+   * and collidable but silent, so walking the spine offered nothing to do. The
+   * brief is that most objects should answer back, and on a school yard the
+   * furniture is most of what you walk past.
+   *
+   * Positions are copied from the build code rather than guessed: the benches
+   * run west from x -16 at GZ +/- 3.4, the planters sit in pairs 2.6 m off the
+   * spine, the notice board is at (-26, GZ - 3.6), and the rack runs from x -44.
+   */
+  const GZ = L.gate.z;
+
+  // -- the flagpole, on the ceremonial axis
+  inter.add({
+    // The plinth is 2.1 m across at its base with the mast at its centre, so the
+    // zone has to clear the plinth itself: at r 2.6 you had to be standing
+    // almost on it to get a prompt, and the plinth collider keeps you off.
+    x: -14.0, z: GZ, r: 3.6, y: 0.6,
+    label: 'Look up at the flagpole',
+    message: 'A white steel mast on an octagonal concrete plinth, with a tiled '
+      + 'bed of low planting at its foot. The flag is raised at assembly and '
+      + 'struck at the end of the day; the halyard rings against the mast when '
+      + 'the wind gets under it.',
+  });
+
+  // -- the yard benches, six on the north side and four on the south
+  const yardBenches = [];
+  for (let i = 0; i < 6; i++) yardBenches.push({ x: -16.0 - i * 5.4, z: GZ + 3.4 });
+  for (let i = 0; i < 4; i++) yardBenches.push({ x: -18.0 - i * 5.4, z: GZ - 3.4 });
+  for (const b of yardBenches) {
+    inter.add({
+      x: b.x, z: b.z, r: 1.7, y: 0.5,
+      label: 'Sit on the bench',
+      run: () => {
+        if (inter._yardSitting === b) { inter._yardSitting = null; return 'You stand up again.'; }
+        inter._yardSitting = b;
+        return 'Hardwood slats on concrete standards, warm from the sun. From '
+          + 'here the whole spine runs west to the shrine gate.';
+      },
+    });
+  }
+
+  // -- the walkway planters
+  for (const [px, pz] of [
+    [-12.0, GZ + 2.6], [-12.0, GZ - 2.6], [-30.0, GZ + 2.6], [-30.0, GZ - 2.6],
+    [-48.0, GZ + 2.6], [-48.0, GZ - 2.6], [-12.0, -22.0 + 2.6], [-12.0, -22.0 - 2.6],
+    [-40.0, -22.0 + 2.6],
+  ]) {
+    inter.add({
+      x: px, z: pz, r: 1.3, y: 0.5,
+      label: 'Look at the planter',
+      message: 'A square tiled box with a clipped box hedge in it. Two of these '
+        + 'stand at each junction of the walkway, which is how you can tell you '
+        + 'have reached one.',
+    });
+  }
+
+  // -- litter bins
+  for (const [bx, bz] of [[-13.2, GZ + 3.9], [-33.0, GZ - 3.9], [-47.2, GZ + 3.9]]) {
+    inter.add({
+      x: bx, z: bz, r: 1.1, y: 0.4,
+      label: 'Check the litter bin',
+      message: 'A black steel drum with a domed lid and a small round mouth. '
+        + 'Emptied by the utility staff in the afternoon.',
+    });
+  }
+
+  // -- the notice board
+  inter.add({
+    x: -26.0, z: GZ - 3.6, r: 2.0, y: 1.6,
+    label: 'Read the notice board',
+    message: 'Two iron posts carrying a glazed timber case. This is where the '
+      + 'term calendar goes: enrolment dates, the intramural schedule, the list '
+      + 'of sections excused from afternoon classes for practice.',
+  });
+
+  // -- the bike rack
+  inter.add({
+    x: -42.3, z: GZ - 4.6, r: 2.2, y: 0.6,
+    label: 'Look at the bike rack',
+    message: 'Five inverted-U steel hoops set into the paving. Senior students '
+      + 'ride in from the barangays either side of MacArthur Highway and lock '
+      + 'up here.',
   });
 
   /* ---------------------------------------------------- the covered court */

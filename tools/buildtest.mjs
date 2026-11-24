@@ -39,9 +39,24 @@ globalThis.OffscreenCanvas = function(){ return mkCanvas(); };
 globalThis.self = globalThis.window;
 
 const { World } = await import(new URL('../src/world/index.js', import.meta.url));
+const { Interaction, registerInteractions } =
+  await import(new URL('../src/player/interaction.js', import.meta.url));
 const THREE = await import("three");
 const w = new World(new THREE.Scene());
 const t0 = Date.now();
 await w.build(() => {});
 console.log('OK buildMs=', Date.now() - t0);
-console.log('stats=', JSON.stringify({ interactables: w.interactables?.length, colliders: w.colliders?.length, timings: w.stats?.timings }));
+
+/**
+ * Register the interactions too.
+ *
+ * The previous version only counted w.interactables, which the world build
+ * never populated, so it printed 0 on every run even though 36 zones were
+ * live in the browser. Registering here keeps the harness honest: if a zone is
+ * added or a prop is moved, this number moves with it.
+ */
+const { L } = await import(new URL('../src/world/layout.js', import.meta.url));
+const inter = new Interaction(w.scene, null);
+registerInteractions(inter, w.scene, { ...(w.refs || {}), sky: null }, L);
+w.interactables = inter.zones;
+console.log('stats=', JSON.stringify({ interactables: w.interactables.length, colliders: w.colliders?.length, timings: w.stats?.timings }));
