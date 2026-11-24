@@ -106,7 +106,28 @@ These are all documented in code comments at the point of failure. Summarised:
   hides the water. `RingGeometry` or `CylinderGeometry(..., true)` where a hole
   is wanted.
 
+## Done
+
+- Shrine interior: `robedFigure()` builds saints from a lathed robe profile with
+  shoulders, turned head, halo/staff/book options. San Nicolas in the central
+  niche, six flanking saints in two tiers.
+- Fourteen Stations of the Cross on the nave piers, seven per wall, running
+  anticlockwise from the sanctuary, each with a frame, painted plaque and candle
+  cup.
+
 ## Open work
 
-- Shrine interior: retablo niche figures and station plaques.
 - Main building has a blank band through the middle of its window grid.
+- Shrine interior could take: pew end-caps, a proper sanctuary lamp, marble
+  inlay on the sanctuary platform, and a confessional.
+
+## Two more traps paid for in blood
+
+- **A `PlaneGeometry` faces local +Z.** Both sets of station plaques were built
+  with the two walls' `rotateY` swapped, so they aimed INTO the masonry and were
+  backface-culled — the frames then read as dark smudges on the plaster. Nothing
+  about the symptom suggests culling. If a flat thing is invisible but its frame
+  is not, suspect the facing before the material.
+- **`npm install --silent` under `set -e` can fail without a word**, and the next
+  symptom is the build dying on `Cannot find package 'three'` with no hint that
+  dependencies were missing. `setup.sh` now verifies `node_modules/three` exists.
