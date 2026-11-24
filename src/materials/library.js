@@ -309,6 +309,18 @@ export function buildMaterials() {
   M.dctPink = STD({ color: 0xb8325a, roughness: 0.46, metalness: 0.05 });
   M.statue = STD({ color: 0xd9d2c4, roughness: 0.72, metalness: 0.02 });
   M.statueRobed = STD({ color: 0x1d1a18, roughness: 0.66, metalness: 0.03 });
+  /**
+   * The same robe, for OUTDOOR statues.
+   *
+   * A black Dominican habit in a dim nave is correct and reads well. The same
+   * near-black (#1d1a18) outdoors, lit only by sky against a pale porch, collapses
+   * into a featureless silhouette — the forecourt statue of San Nicolas rendered
+   * as a black cone. Outdoor figures in Philippine churchyards are almost always
+   * painted pale, so this is both more legible and more accurate.
+   */
+  M.statueRobedOutdoor = STD({
+    color: 0xb9b2a4, roughness: 0.74, metalness: 0.03,
+  });
   M.gold = STD({
     color: 0xc79a38, roughness: 0.3, metalness: 0.9,
     emissive: 0x6e4e12, emissiveIntensity: 0.42,

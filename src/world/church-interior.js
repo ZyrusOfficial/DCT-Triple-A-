@@ -50,7 +50,7 @@ import { Builder, box, cylinder, sphere } from './kit.js';
  * @param o.scale overall height multiplier (figures are ~1.75 m at 1.0)
  * @returns {THREE.BufferGeometry[]} geometry, untranslated, plus {parts:[...]}
  */
-function robedFigure(o = {}) {
+export function robedFigure(o = {}) {
   const out = [];
   const robe = o.robe || 'statueRobed';
   const skin = o.skin || 'statue';
@@ -156,7 +156,7 @@ function robedFigure(o = {}) {
  * Place a figure's parts at (x, y, z) and add them to the builder.
  * Parts come back keyed by material, so this loops and translates.
  */
-function placeFigure(b, parts, x, y, z, yaw = 0) {
+export function placeFigure(b, parts, x, y, z, yaw = 0) {
   for (const { geo, key } of parts) {
     const gg = geo.clone();
     if (yaw) gg.rotateY(yaw);

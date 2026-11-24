@@ -19,7 +19,7 @@
  *     porch on a moulded plinth.
  */
 import * as THREE from 'three';
-import { buildChurchInterior } from './church-interior.js';
+import { buildChurchInterior, robedFigure } from './church-interior.js';
 import { Builder, box, plane, cylinder, sphere, wallWithOpenings, windowUnit,
          column, railingLine, gableRoof, dome, cross, TEXSCALE } from './kit.js';
 import { put } from './place.js';
@@ -497,13 +497,30 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     b.add(box(2.4, 0.5, 2.4, 1.5), 'concreteTrim', { pos: [sx, 0.25, sz], collide: true });
     b.add(box(1.9, 0.9, 1.9, 1.5), 'concrete', { pos: [sx, 0.95, sz] });
     b.add(box(1.3, 0.35, 1.3, 1.5), 'pavingRed', { pos: [sx, 1.55, sz] });
-    // Robed figure (simplified but readable silhouette)
-    b.add(cylinder(0.34, 0.55, 1.5, 10), 'statueRobed', { pos: [sx, 2.45, sz] });
-    b.add(cylinder(0.28, 0.34, 0.6, 10), 'statueRobed', { pos: [sx, 3.45, sz] });
-    b.add(sphere(0.19, 10), 'statue', { pos: [sx, 3.86, sz] });
-    // halo + book
-    b.add(cylinder(0.3, 0.3, 0.05, 12), 'gold', { pos: [sx, 3.92, sz - 0.12], rot: [Math.PI / 2 - 0.35, 0, 0] });
-    b.add(box(0.36, 0.46, 0.11, 1), 'woodDark', { pos: [sx + 0.44, 2.85, sz + 0.16], rot: [0, 0.2, -0.15] });
+    /**
+     * San Nicolas de Tolentino in the porch forecourt.
+     *
+     * This is the figure a visitor walks up to, so it gets the same lathed-robe
+     * builder as the retablo niches instead of three stacked cylinders — which at
+     * this scale rendered as a black cone with a white ball balanced on it.
+     *
+     * Built at 1.35x niche scale and in the OUTDOOR robe material. The near-black
+     * Dominican habit used inside the nave collapses into a featureless silhouette
+     * out here, where the only light is sky against a pale porch; churchyard
+     * statues here are almost always painted pale anyway.
+     */
+    {
+      const fig = robedFigure({
+        robe: 'statueRobedOutdoor', dark: 'statueRobedOutdoor', skin: 'statue',
+        halo: true, book: true, staff: false, scale: 1.35,
+      });
+      for (const { geo, key } of fig) {
+        const gg = geo.clone();
+        gg.rotateY(0.7);
+        gg.translate(sx, 1.72, sz);
+        b.addGeo(gg, key);
+      }
+    }
     b.addCollider([sx - 1.3, 0, sz - 1.3], [sx + 1.3, 1.8, sz + 1.3]);
   }
 
