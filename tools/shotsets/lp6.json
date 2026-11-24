@@ -1,0 +1,2 @@
+[{"name":"lp6","cam":[-80.0,1.7,9.4],"look":[-87.0,1.7,9.4],"fov":80,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const o=[];const casts=[[[1,0,0],'EAST'],[0,1,0],'UP'];return JSON.stringify(o)})()"}]

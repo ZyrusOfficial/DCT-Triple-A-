@@ -199,7 +199,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
         glassKey: nightMode && (f % 2 === 0) ? 'glassLit' : 'glass',
         frameKey: 'paintWhite', mullions: 1, transom: true,
       })) {
-        b.addGeo(p.geo.clone().translate(MAIN.x + x, y, frontZ - 0.01), p.key);
+        b.addGeo(p.geo.clone().translate(MAIN.x + x, y, frontZ + 0.01), p.key);
       }
       // Rear face
       for (const p of windowUnit(winW, winH, {
@@ -223,7 +223,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
 
   // Horizontal string courses on the façade (thin white lines between windows)
   for (let f = 0; f <= N; f++) {
-    b.add(box(W, 0.1, 0.16, 2), 'paintWhite', { pos: [MAIN.x, f * FH + 1.02, frontZ - 0.06] });
+    b.add(box(W, 0.1, 0.16, 2), 'paintWhite', { pos: [MAIN.x, f * FH + 1.02, frontZ + 0.06] });
   }
 
   /* ===================================================== CENTRAL ENTRY BAY */
@@ -408,7 +408,17 @@ export function buildMainBuilding(parent, M, opts = {}) {
 
     /* ---------- porte-cochère ---------- */
     const cw = MAIN.entryW + 4.0, cd = 6.0, ch = 4.5;
-    const cz = EZ - cd / 2;
+    /**
+     * The canopy bears on the projection's face and cantilevers OUTWARD.
+     *
+     * It used to be centred on EZ - cd/2, which was correct when the entrance
+     * was on the far side, but after the flip that put the slab 2.8 m inside the
+     * façade: a concrete soffit through the lobby at y 1.95, low enough to duck
+     * under, with its timber roof structure visible beyond it. The giveaway in
+     * the walk-in render was a hard-edged brown diagonal across the ceiling —
+     * not a ceiling finish, an outside roof seen from inside.
+     */
+    const cz = EZ + cd / 2;
     b.add(box(cw + 1.4, 0.42, cd + 1.0, 2), 'paintWhite', { pos: [MAIN.x, ch, cz] });
     // Shallow steel roof over the canopy
     {
@@ -435,7 +445,14 @@ export function buildMainBuilding(parent, M, opts = {}) {
   // Continuous white columns along the front at 6 m centres with a lean-to roof —
   // the "walkway" that all the students use in the photos.
   {
-    const arcZ = frontZ - 2.6;
+    /**
+     * The arcade is an EXTERIOR walkway: it stands 2.6 m out from the façade on
+     * the campus side, which after the frontZ flip is frontZ + 2.6. With the
+     * old minus sign the whole 95 m arcade — columns, lean-to roof, fascia — was
+     * built 2.6 m INSIDE the building, putting a diagonal timber slab through
+     * the entrance lobby at eye height and a row of columns down the corridor.
+     */
+    const arcZ = frontZ + 2.6;
     for (let x = -hw + 2.0; x <= hw - 2.0; x += 5.6) {
       if (Math.abs(MAIN.x + x - MAIN.x) < MAIN.entryW / 2 + 2.5) continue;
       const cp = column(0.2, 3.3, { key: 'paintWhite', baseH: 0.12, capH: 0.12, segments: 10 });
@@ -546,14 +563,47 @@ export function buildMainBuilding(parent, M, opts = {}) {
         const azWall = azOf(sx * cW / 2);
         for (let i = 0; i < bays; i++) {
           const zl = z0 + (i + 0.5) * bayW;      // bay centre, along the length
-          const doorW = 1.0;
-          const doorZl = zl - bayW / 2 + doorW / 2 + 0.12;
-          const segW = bayW - doorW - 0.24;
+          /**
+           * The bay that faces the entrance gets its corridor opening where the
+           * cross-corridor actually runs, not at the bay's usual door position.
+           *
+           * Every other bay puts its door near the bay start (bayW/2 in from the
+           * centre). This one would land at zLocal 52.7 — world z 4.7 — while the
+           * cross-corridor is centred on zLocal 48, world z 9.4. Four and a half
+           * metres apart: the passage reached the wall and stopped.
+           *
+           * It is also wider (2.0 m instead of 1.0) and gets no leaf, because a
+           * door swinging across a lobby threshold is just an obstruction.
+           */
+          const isEntryOpening = (i === entryBay && sx > 0);
+          const doorW = isEntryOpening ? 2.0 : 1.0;
+          const doorZl = isEntryOpening
+            ? zMid - doorW / 2
+            : zl - bayW / 2 + doorW / 2 + 0.12;
+          const segW = bayW - doorW - (isEntryOpening ? 0 : 0.24);
 
-          // wall either side of the opening (long in authored X)
-          b.add(box(segW, H1, 0.12, 3), 'interiorPlaster', {
-            pos: [axOf(doorZl + doorW / 2 + segW / 2), y0 + H1 / 2, azWall],
-          });
+          /**
+           * Wall either side of the opening (long in authored X).
+           *
+           * For the entry bay the opening is off-centre in the bay, so the two
+           * stubs are worked out from the bay's own ends rather than from the
+           * opening: bayStart .. openingS and openingN .. bayEnd.
+           */
+          const bayStart = zl - bayW / 2;
+          const bayEnd = zl + bayW / 2;
+          const opS0 = doorZl, opS1 = doorZl + doorW;
+          const stubS = opS0 - bayStart;
+          const stubN = bayEnd - opS1;
+          if (stubS > 0.02) {
+            b.add(box(stubS, H1, 0.12, 3), 'interiorPlaster', {
+              pos: [axOf(bayStart + stubS / 2), y0 + H1 / 2, azWall],
+            });
+          }
+          if (stubN > 0.02) {
+            b.add(box(stubN, H1, 0.12, 3), 'interiorPlaster', {
+              pos: [axOf(opS1 + stubN / 2), y0 + H1 / 2, azWall],
+            });
+          }
           // head over the door
           b.add(box(doorW + 0.24, H1 - 2.14, 0.12, 3), 'interiorPlaster', {
             pos: [axOf(doorZl), y0 + 2.14 + (H1 - 2.14) / 2, azWall],
@@ -579,14 +629,18 @@ export function buildMainBuilding(parent, M, opts = {}) {
            * thickness goes in the box's THIRD argument because it ends up
            * across the corridor.
            */
-          b.add(box(0.045, 2.02, doorW, 1), 'wood', {
-            pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.52],
-            rot: [0, Math.PI / 2 * 0.88, 0],
-          });
+          if (!isEntryOpening) {
+            b.add(box(0.045, 2.02, doorW, 1), 'wood', {
+              pos: [axOf(doorZl - doorW / 2 - 0.02), y0 + 1.01, azWall + sx * 0.52],
+              rot: [0, Math.PI / 2 * 0.88, 0],
+            });
+          }
           // borrowed light high in the wall
-          b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
-            pos: [axOf(zl + bayW * 0.18), y0 + 2.52, azWall + sx * 0.08],
-          });
+          if (!isEntryOpening) {
+            b.add(box(bayW * 0.46, 0.62, 0.05, 1.4), 'glassDark', {
+              pos: [axOf(zl + bayW * 0.18), y0 + 2.52, azWall + sx * 0.08],
+            });
+          }
         }
       }
 
@@ -694,25 +748,43 @@ export function buildMainBuilding(parent, M, opts = {}) {
       }
 
       /* ------------------------------------------------------------ stairs */
+      /**
+       * The stairs were centred on zMid, which is the same zLocal as the front
+       * door: the flight climbed straight up through the entrance. Its lowest
+       * treads landed at y 1.95 right over the doorway, so walking in you met a
+       * concrete soffit at head height and a timber stringer across the lobby,
+       * and the run of treads blocked the way through to the spine.
+       *
+       * Two stairwells now, one at each END of the building, each a straight
+       * flight lying along the length inside the outer wall. Nothing occupies
+       * the middle, so the entrance bay belongs to the entrance.
+       */
       if (f < N - 1) {
         for (const sx of [-1, 1]) {
-          const xlSt = sx * (xHalf - 1.5);
-          const steps = 22;
-          const rise = FH / steps;
-          const run = 0.29;
-          for (let i = 0; i < steps; i++) {
-            b.add(box(run * 0.96, rise, 2.9, 1), 'concreteTrim', {
-              pos: [axOf(zMid + (i - steps / 2) * run), y0 + rise * (i + 0.5), azOf(xlSt)],
+          for (const endSign of [-1, 1]) {
+            const xlSt = sx * (xHalf - 1.5);
+            const steps = 22;
+            const rise = FH / steps;
+            const run = 0.29;
+            // flight springs from the end wall and climbs inward
+            const zStart = endSign < 0 ? WT + 0.35 : W - WT - 0.35;
+            const zC = zStart + endSign * (steps * run) / 2;
+            for (let i = 0; i < steps; i++) {
+              const zStep = zStart + endSign * (i + 0.5) * run;
+              b.add(box(run * 0.96, rise * (i + 1), 2.9, 1), 'concreteTrim', {
+                pos: [axOf(zStep), y0 + rise * (i + 1) / 2, azOf(xlSt)],
+              });
+            }
+            // the enclosing shaft wall, on the corridor side of the flight
+            b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
+              pos: [axOf(zC), y0 + FH / 2, azOf(xlSt + sx * 1.5)],
             });
-          }
-          b.add(box(steps * run, FH, 0.12, 2), 'interiorPlaster', {
-            pos: [axOf(zMid), y0 + FH / 2, azOf(xlSt + sx * 1.5)],
-          });
-          for (let i = 0; i < steps; i += 3) {
-            b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
-              pos: [axOf(zMid + (i - steps / 2) * run), y0 + rise * i + 0.48,
-                    azOf(xlSt - sx * 1.35)],
-            });
+            for (let i = 0; i < steps; i += 3) {
+              b.add(cylinder(0.035, 0.035, 0.95, 6), 'steel', {
+                pos: [axOf(zStart + endSign * (i + 0.5) * run), y0 + rise * i + 0.48,
+                      azOf(xlSt - sx * 1.35)],
+              });
+            }
           }
         }
       }
@@ -735,52 +807,116 @@ export function buildMainBuilding(parent, M, opts = {}) {
      * steps of bayW, and the door is at world z = MAIN.z, which is zLocal =
      * W/2 = 48. Bay (48 - WT)/bayW.
      */
+    /**
+     * Cross-corridor geometry, and the two frames it has to satisfy at once.
+     *
+     * It runs ACROSS the building - through the depth - so in the authored frame
+     * that is the xLocal axis: from the facade-side wall (xl = +xHalf) inward to
+     * the spine (xl = +cW/2). Its centre is therefore at xLocal
+     * (xHalf + cW/2)/2 and its length is roomD. In the other axis it is a short
+     * slot centred on the door, which is at zLocal = W/2.
+     *
+     * Getting this wrong is easy and silent: the first attempt passed the two
+     * axes the other way round and built a 6.2 m corridor running along the
+     * REAR half of the building, nowhere near the door.
+     */
+    const xCrossMid = (xHalf + cW / 2) / 2;
     for (let f = 0; f < N; f++) {
       const y0 = f * FH;
       const floorY = f === 0 ? 0.085 : 0.025;
-      // Cross-corridor floor, from the façade wall to the spine.
-      b.add(box(roomD, 0.06, 2.4, 2.2), 'tileRed', {
-        pos: [axOf(W / 2 - WT / 2 - roomD / 2), y0 + floorY, azOf(cW / 2 - 0.1)],
+      /**
+       * Floor: its LENGTH runs through the depth, its WIDTH across the door slot.
+       *
+       * Laid 1 cm ABOVE the classroom vinyl, not at the same level. Both plates
+       * are 6 cm thick and the vinyl runs the full length of the building, so at
+       * equal heights the passage floor z-fought and lost: the lobby read as
+       * blue-grey vinyl with a terracotta spine visible only beyond the end of
+       * it. Card-carrying z-fighting, and the fix is to lift the tile clear.
+       */
+      b.add(box(2.4, 0.06, roomD, 2.2), 'tileRed', {
+        pos: [axOf(W / 2), y0 + floorY + 0.01, azOf(xCrossMid)],
       });
-      // Its ceiling, dropped to the same height as the rest of the floor.
-      b.add(box(roomD + 0.4, 0.10, 2.6, 3), 'ceilingBoard', {
-        pos: [axOf(W / 2 - WT / 2 - roomD / 2), y0 + H1, azOf(cW / 2 - 0.1)],
+      // Its own ceiling, at the same soffit height as the rest of the floor.
+      b.add(box(2.6, 0.10, roomD + 0.4, 3), 'ceilingBoard', {
+        pos: [axOf(W / 2), y0 + H1, azOf(xCrossMid)],
       });
+      // Side walls, so it reads as a passage and not as an open end into the
+      // room it replaced. 2.4 m clear between them.
+      for (const sgn of [-1, 1]) {
+        b.add(box(0.10, H1, roomD, 3), 'interiorPlaster', {
+          pos: [axOf(W / 2 + sgn * 1.25), y0 + H1 / 2, azOf(xCrossMid)],
+        });
+      }
     }
 
     /* ------------------------------------------------------- entrance lobby */
+    /**
+     * Fitted out in WORLD coordinates, converted once.
+     *
+     * The previous version placed its furniture relative to the spine with
+     * xlCnt = cW/2 - 0.35 ("clear of the spine, so circulation is never
+     * blocked"). Both halves of that were wrong. cW/2 is 1.1, so xl 0.75 is
+     * INSIDE a 2.2 m corridor, and zl 50.4 is the entrance bay. The result was a
+     * 5.4 m timber screen standing across the mouth of the new cross-corridor —
+     * a dark wall dead ahead of anyone walking in, which no amount of ceiling or
+     * stair fixing could clear. The honour boards had the mirror-image bug: at
+     * -cW/2 - 0.02 they sat 2 cm BEHIND the corridor wall and were never visible
+     * from anywhere.
+     *
+     * So: aim at world positions, and let atWorld do the conversion. Inverting
+     * the mapping (world_x = MAIN.x + pz - MAIN.z, world_z = MAIN.z - px + MAIN.x)
+     * gives px = MAIN.x + MAIN.z - wz and pz = wx - MAIN.x + MAIN.z.
+     */
     {
-      // The counter sits on the corridor's +X side, near mid-length, clear of
-      // the spine so circulation is never blocked.
-      const xlCnt = cW / 2 - 0.35;
-      const zlCnt = zMid + 2.4;
+      const atWorld = (wx, wz) => [MAIN.x + MAIN.z - wz, 0, wx - MAIN.x + MAIN.z];
+      const ccx = MAIN.x + xCrossMid;                 // cross-corridor centre, world x
+      const zN = MAIN.z - 1.25;                       // its north side wall
+      const zS = MAIN.z + 1.25;                       // its south side wall
+      const yL = 0.085;                               // ground-floor finish level
 
-      b.add(box(4.6, 1.05, 0.6, 2), 'woodDark',
-        { pos: [axOf(zlCnt), 0.55, azOf(xlCnt)] });
-      b.add(box(4.6, 0.09, 0.78, 2), 'deskTop',
-        { pos: [axOf(zlCnt), 1.12, azOf(xlCnt)] });
-      b.add(box(5.4, 2.4, 0.10, 2), 'wood',
-        { pos: [axOf(zlCnt), 1.2, azOf(cW / 2 + 0.04)] });
-      for (let i = 0; i < 8; i++) {
-        b.add(box(0.18, 2.4, 0.16, 1), 'woodDark',
-          { pos: [axOf(zlCnt - 2.1 + i * 0.6), 1.2, azOf(cW / 2 - 0.02)] });
+      /**
+       * Reception counter, against the north wall and facing the door.
+       *
+       * 0.62 deep by 3.2 long. Its west end stops 1.5 m short of the spine
+       * doorway, so you can walk in, turn left and be in the main corridor
+       * without going round anything.
+       */
+      {
+        const [cx, , cz] = atWorld(ccx, zN + 0.33);
+        b.add(box(0.62, 1.05, 3.2, 2), 'woodDark',
+          { pos: [cx, yL + 0.525, cz] });
+        b.add(box(0.80, 0.08, 3.5, 2), 'deskTop',
+          { pos: [cx, yL + 1.09, cz] });
       }
 
-      // Crest on the wall a visitor faces walking in.
-      const crest2 = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), M.crest);
-      crest2.position.set(axOf(zMid), 3.1, azOf(-cW / 2 - 0.02));
-      crest2.rotation.y = 0;
-      b.addSign(crest2);
+      /**
+       * Crest on the far wall of the corridor, square to the door.
+       *
+       * PlaneGeometry faces local +Z, and the group's yaw turns that into world
+       * +X — that is, back toward the entrance — so rotation.y stays 0. The old
+       * placement buried it 2 cm inside the wall; this one stands 5 cm proud.
+       */
+      {
+        const crest2 = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), M.crest);
+        const [kx, , kz] = atWorld(MAIN.x - cW / 2 + 0.05, MAIN.z);
+        crest2.position.set(kx, 3.1, kz);
+        crest2.rotation.y = 0;
+        b.addSign(crest2);
+      }
 
-      // Honour boards on the opposite corridor wall.
-      for (const dz of [-6.0, 6.0]) {
-        b.add(box(4.2, 1.5, 0.10, 1.6), 'woodDark',
-          { pos: [axOf(zMid + dz), 2.05, azOf(-cW / 2 - 0.02)] });
-        b.add(box(4.0, 1.3, 0.05, 1), 'paintCream',
-          { pos: [axOf(zMid + dz), 2.05, azOf(-cW / 2 - 0.08)] });
+      // Honour boards, on the south wall of the cross-corridor, facing across
+      // it. Long along world X, so the length goes in the box's Z argument.
+      for (const dx of [-1.7, 1.7]) {
+        const [fx, , fz] = atWorld(ccx + dx, zS - 0.07);
+        b.add(box(0.12, 1.5, 3.0, 1.6), 'woodDark',
+          { pos: [fx, 2.05, fz] });
+        const [px2, , pz2] = atWorld(ccx + dx, zS - 0.15);
+        b.add(box(0.05, 1.3, 2.8, 1), 'paintCream',
+          { pos: [px2, 2.05, pz2] });
+        const [rx, , rz] = atWorld(ccx + dx, zS - 0.19);
         for (let i = 0; i < 9; i++) {
-          b.add(box(3.7, 0.09, 0.02, 1), 'dctBand',
-            { pos: [axOf(zMid + dz), 1.52 + i * 0.13, azOf(-cW / 2 - 0.12)] });
+          b.add(box(0.02, 0.09, 2.5, 1), 'dctBand',
+            { pos: [rx, 1.52 + i * 0.13, rz] });
         }
       }
     }
