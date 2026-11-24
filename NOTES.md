@@ -141,8 +141,10 @@ These are all documented in code comments at the point of failure. Summarised:
 
 ## Open work
 
-- The shrine's main-door sign lettering is occluded by the porch columns from
-  most approach angles. Either raise the sign or space the columns.
+- ~~The shrine's main-door sign lettering is occluded by the porch columns.~~
+  Wrong: the sign plane is at PZ + PD/2 + 0.18 and the column line at
+  PZ + PD/2 - 0.75, so the sign is IN FRONT of the columns and always has been.
+  The real occluder is tree canopy on the approach, which is deliberate.
 - Shrine interior could still take: pew end-caps, marble inlay on the sanctuary
   platform, a confessional, and a proper reredos shadow so the centre bay does
   not read flat.
@@ -224,3 +226,51 @@ These are all documented in code comments at the point of failure. Summarised:
 - **`npm install --silent` under `set -e` can fail without a word**, and the next
   symptom is the build dying on `Cannot find package 'three'` with no hint that
   dependencies were missing. `setup.sh` now verifies `node_modules/three` exists.
+
+## The entrance, and four faults that each hid the next
+
+The main building's door is in the middle of one LONG side while the spine
+corridor runs the building's LENGTH. That is the whole story; everything below
+is fallout from it.
+
+- **A façade plane documented as "the front" is only front if the group is not
+  rotated.** `frontZ = MAIN.z - d/2` read as the front in three comments and was
+  the BACK wall in world. Flipping it to `MAIN.z + d/2` moved the bay, canopy,
+  statue and pediment off an empty lawn — and then every signed offset hung off
+  it had to be flipped in the same commit. There were 21. The tell was a render
+  with no entrance at all: a missing element, not a misplaced one.
+- **Flipping the plane does not flip the details.** `EZ = frontZ - entryProj`
+  still pointed INTO the block after the flip, so doors, crest and niche were
+  buried. Worse, `EZ` was computed as `frontZ + entryProj` while the piers are
+  `entryProj + 0.6` deep, so the true outer face was 0.3 m further out again and
+  every window sat 30 cm inside the masonry. Probe the actual face, do not
+  derive it: a sideways ray from outside names the first hit and its x.
+- **`windowUnit` faces local -Z.** On the reversed face every unit needed a
+  half-turn or it was backface-culled into invisibility. Same for the crest's
+  own `rotation.y = Math.PI`, which became wrong the moment the wall turned.
+- **Circulation has to meet the door.** The rooms were furnished, the corridor
+  was right, and you still walked into a classroom, because the spine runs one
+  way and the door is on the other. A cross-corridor through the full depth now
+  joins them.
+- **`zMid` is a bay BOUNDARY, not a bay centre.** 10 bays over 95.1 m from 0.45
+  puts bay breaks at 48.0 — exactly the door. Suppressing "the entry bay" left
+  the neighbouring bay sealed and furnished, walling the passage off one metre
+  from its own threshold. The corridor wall is now drawn as solid spans between
+  a list of openings, with whole-bay mouths for the passage.
+- **A stair centred on the door climbs through the entrance.** It was at zMid
+  because zMid looked like "the middle of the building", and its bottom treads
+  landed at y 1.95 over the doorway. The give-away was a hard-edged brown
+  diagonal across the ceiling in the walk-in render: not a ceiling finish, an
+  outside roof seen from inside.
+- **Outside elements kept turning up inside.** The ground-floor arcade was at
+  `frontZ - 2.6` and so stood 2.6 m INTO the building — 95 m of columns and a
+  timber lean-to roof through the lobby. The canopy cantilevered inward for the
+  same reason. Anything with a signed offset from `frontZ` was suspect.
+- **Coplanar floors lose silently.** The passage tile and the classroom vinyl
+  are both 6 cm and the vinyl runs the whole building, so at equal heights the
+  terracotta z-fought and lost: blue-grey lobby. Lift the detail 1 cm.
+- **A reception counter "clear of the spine" at xl 0.75 is inside a 2.2 m
+  corridor.** It was, and its 5.4 m screen spanned the mouth of the cross
+  corridor — a dark wall dead ahead of anyone walking in. Its honour boards had
+  the mirror bug, at −cW/2 − 0.02, i.e. 2 cm behind the wall, invisible from
+  everywhere. Fit out in world coordinates and convert once.
