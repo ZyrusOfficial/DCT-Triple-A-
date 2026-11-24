@@ -438,7 +438,19 @@ export function buildMainBuilding(parent, M, opts = {}) {
     // A room bay is 8.4 m; the two end bays absorb the remainder.
     const bays = 10;
     const bayW = IW / bays;
-    const x0 = -hw + WT;
+    /**
+     * x0 is a WORLD coordinate.
+     *
+     * Everything else in `buildMainBuilding` after the massing pass is authored
+     * in world space and rebased into the group's local frame at the very end
+     * (`for (const [, geos] of b.bins) for (const g of geos) g.translate(-MAIN.x, 0, -MAIN.z)`).
+     * Writing `x0 = -hw + WT` here put it at -47.55 instead of MAIN.x - hw + WT =
+     * -133.55, so every classroom, partition, desk, chair, chalkboard and stair
+     * was built between x -47 and -38 — a hundred metres east of the building,
+     * out on the lawn. The corridor itself was empty, which is why it rendered as
+     * a clean bare tunnel.
+     */
+    const x0 = MAIN.x - hw + WT;
 
     for (let f = 0; f < N; f++) {
       const y0 = f * FH;
