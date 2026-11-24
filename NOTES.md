@@ -175,6 +175,15 @@ These are all documented in code comments at the point of failure. Summarised:
   left a sentence with a hole in it. Use `git commit -F file` for anything
   containing backticks or `$(...)`.
 
+- **Ground height stacking must not cross anything with its own floor.** The
+  lawn height rule (base paving 0.070 < grass 0.078 < paths 0.090) is correct
+  between ground surfaces, but a lawn panel ran straight over the covered court,
+  whose floor slab is at 0.06. The grass won, and the entire basketball court —
+  markings, arcs, keys, backboard posts — was buried and invisible for several
+  sessions. Third instance of this exact class after the shrine's `tileCream`
+  nave floor and its `concreteDark` plinth slab. **Whenever a surface is missing,
+  ray-cast down and look at the FIRST hit and its owner, not the second.**
+
 ## Two more traps paid for in blood
 
 - **A `PlaneGeometry` faces local +Z.** Both sets of station plaques were built
