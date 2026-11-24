@@ -155,8 +155,34 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     bp.add(box(0.75, 1.3, 3.6, 2), 'concreteTrim',
       { pos: [sx * (NW / 2 + 4.5), 0.65, NL / 2 + 4.4], collide: true });
   }
-  // Floor slab (authored at grade; the group offset lifts it)
-  b.add(box(NW + 1.2, 0.5, NL + 0.8, TEXSCALE.concrete), 'concreteDark', { pos: [0, 0.25, 0], collide: true });
+  /**
+   * FLOOR SLAB — deliberately NOT inside the nave.
+   *
+   * The church body group is lifted onto the plinth by PLINTH = 1.15 m, so a slab
+   * authored at y 0.25 with 0.5 thickness lands with its TOP at 1.65 m — half a
+   * metre above the interior's own floor at 1.15 + 0.03. It out-ranked
+   * everything the interior built in the sanctuary: ray-casting straight down
+   * over the altar gave church:concreteDark at 1.65, ahead of
+   * church-interior:sanctuaryFloor at 1.21, and the sanctuary read as a blown-out
+   * white pool with a floating altar.
+   *
+   * This is the SAME class of bug as the tileCream nave floor that used to sit at
+   * y 0.52 and bury the whole interior. The lesson generalises: the exterior
+   * shell must never own a surface inside the nave. What is left here is a narrow
+   * apron ring — enough to close the gap between the wall footings and the
+   * plinth from outside, with a hole where the interior's floor goes.
+   */
+  for (const [aw, ad, ax, az] of [
+    // front and rear aprons, outside the nave
+    [NW + 1.2, 0.6, 0, NL / 2 + 0.1],
+    [NW + 1.2, 0.6, 0, -NL / 2 - 0.1],
+    // side aprons
+    [0.6, NL + 1.4, NW / 2 + 0.3, 0],
+    [0.6, NL + 1.4, -NW / 2 - 0.3, 0],
+  ]) {
+    b.add(box(aw, 0.5, ad, TEXSCALE.concrete), 'concreteDark',
+      { pos: [ax, 0.25, az], collide: true });
+  }
   /**
    * NO NAVE FLOOR HERE.
    *
@@ -658,8 +684,12 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
    */
   const naveLight = new THREE.PointLight(0xfff6e8, 20, 52, 1.15);
   naveLight.position.set(0, WH - 1.6, 4.0);
-  const altarLight = new THREE.PointLight(0xffeecd, 18, 30, 1.3);
-  altarLight.position.set(0, WH - 2.4, -NL / 2 + 4.0);
+  // Intensity 18 at 9.4 m directly over the altar turned the whole sanctuary
+  // into a white bloom (the marble and cloth both clipped to pure white, so the
+  // altar read as a glowing slab). Drop it, pull it back behind the retablo so
+  // it rakes the reredos instead of spot-lighting the mensa, and warm it.
+  const altarLight = new THREE.PointLight(0xffe0ad, 7.5, 22, 1.5);
+  altarLight.position.set(0, WH - 3.4, -NL / 2 + 1.2);
   /**
    * Low fill, standing in for floor bounce.
    *

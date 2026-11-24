@@ -400,7 +400,12 @@ export function buildChurchInterior(parent, M, CH) {
     const AZ = apseZ + 3.2;
     b.add(box(3.5, 0.18, 1.5, 2), 'altarMarble', { pos: [0, 1.02, AZ] });
     b.add(box(3.2, 0.16, 1.25, 2), 'altarMarble', { pos: [0, 1.17, AZ] });
-    b.add(box(3.3, 0.95, 0.12, 1), 'gold', { pos: [0, 0.55, AZ + 0.68] });
+    // Antependium — dim gold frontal, not the hot M.gold used for gilding.
+    b.add(box(3.3, 0.95, 0.12, 1), 'altarFrontal', { pos: [0, 0.55, AZ + 0.68] });
+    // Embroidered orphrey band across the frontal, and a stepped stone edge
+    // along the mensa so the top slab reads as stone rather than a light panel.
+    b.add(box(3.34, 0.20, 0.14, 1), 'goldCross', { pos: [0, 0.86, AZ + 0.68] });
+    b.add(box(3.52, 0.06, 1.52, 1), 'altarMarble', { pos: [0, 1.09, AZ] });
     b.add(box(3.45, 0.05, 1.42, 2), 'altarCloth', { pos: [0, 1.27, AZ - 0.02] });
     for (const q of [-1, 1]) {
       for (const t of [0, 1]) {
@@ -411,6 +416,66 @@ export function buildChurchInterior(parent, M, CH) {
     b.add(box(0.9, 0.95, 0.75, 2), 'altarMarble', { pos: [-2.9, 0.5, AZ + 1.6] });
     b.add(box(0.62, 0.5, 0.58, 2), 'woodDark', { pos: [2.7, 0.75, AZ + 1.4] });
     b.add(box(0.62, 0.62, 0.1, 2), 'woodDark', { pos: [2.7, 1.28, AZ + 1.66] });
+
+    /**
+     * ALTAR CRUCIFIX.
+     *
+     * Every Catholic altar has one standing on it, and its absence is one of the
+     * things that makes a modelled sanctuary read as furniture rather than a
+     * place of worship. Gilt cross on a stepped marble foot, with a corpus.
+     */
+    {
+      const cz2 = AZ + 0.18;
+      b.add(box(0.30, 0.10, 0.24, 1), 'altarMarble', { pos: [0, 1.30, cz2] });
+      b.add(box(0.22, 0.07, 0.18, 1), 'altarMarble', { pos: [0, 1.38, cz2] });
+      // upright and crossbar, gilt
+      b.add(box(0.075, 1.15, 0.055, 1), 'goldCross', { pos: [0, 1.99, cz2] });
+      b.add(box(0.52, 0.075, 0.055, 1), 'goldCross', { pos: [0, 2.30, cz2] });
+      // corpus: a pale figure on the cross
+      b.add(box(0.10, 0.46, 0.045, 1), 'statue', { pos: [0, 2.10, cz2 + 0.04] });
+      b.add(sphere(0.052, 8, 6), 'statue', { pos: [0, 2.42, cz2 + 0.04] });
+      for (const q of [-1, 1]) {
+        b.add(box(0.24, 0.045, 0.04, 1), 'statue',
+          { pos: [q * 0.12, 2.24, cz2 + 0.04], rot: [0, 0, q * 0.22] });
+      }
+      // foot of the cross
+      b.add(box(0.16, 0.10, 0.10, 1), 'gold', { pos: [0, 1.44, cz2] });
+    }
+
+    /**
+     * SANCTUARY LAMP.
+     *
+     * Hangs on the gospel side of the sanctuary and is never extinguished — the
+     * one warm light in an otherwise dim apse. Modelled as a suspended gilt cup
+     * on three chains with a red glass, because the red bead of light is what
+     * draws the eye down the nave.
+     */
+    {
+      const LX = -2.6, LZ = AZ + 2.6, LY = 4.6;
+      // three chains up to a ceiling boss
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        const top = [LX + Math.cos(a) * 0.30, LY + 0.78, LZ + Math.sin(a) * 0.30];
+        const bot = [LX + Math.cos(a) * 0.07, LY + 0.06, LZ + Math.sin(a) * 0.07];
+        const len = Math.hypot(top[1] - bot[1], 0.23) + 0.02;
+        const g = box(0.018, len, 0.018, 1);
+        const dx = top[0] - bot[0], dz = top[2] - bot[2];
+        g.rotateX(Math.atan2(dz, top[1] - bot[1]));
+        g.rotateZ(-Math.atan2(dx, top[1] - bot[1]));
+        g.translate((top[0] + bot[0]) / 2, (top[1] + bot[1]) / 2, (top[2] + bot[2]) / 2);
+        b.addGeo(g, 'gold');
+      }
+      // boss and canopy
+      b.add(cylinder(0.10, 0.13, 0.06, 10), 'gold', { pos: [LX, LY + 0.82, LZ] });
+      b.add(cylinder(0.30, 0.30, 0.05, 12), 'gold', { pos: [LX, LY + 0.10, LZ] });
+      // lamp cup, then the red glass, which is the actual light source visually
+      b.add(cylinder(0.16, 0.10, 0.20, 10), 'gold', { pos: [LX, LY - 0.02, LZ] });
+      b.add(cylinder(0.085, 0.085, 0.22, 10), 'lampRed',
+        { pos: [LX, LY - 0.20, LZ] });
+      // a small strong glow so it reads from the door
+      b.add(cylinder(0.055, 0.055, 0.26, 10), 'lampRedGlow',
+        { pos: [LX, LY - 0.20, LZ] });
+    }
   }
 
   /* --------------------------------------------------------------- PEWS */

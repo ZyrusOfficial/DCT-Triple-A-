@@ -322,8 +322,15 @@ export function buildMaterials() {
     color: 0xb9b2a4, roughness: 0.74, metalness: 0.03,
   });
   M.gold = STD({
-    color: 0xc79a38, roughness: 0.3, metalness: 0.9,
-    emissive: 0x6e4e12, emissiveIntensity: 0.42,
+    /**
+     * Emissive was 0.42 on 0x6e4e12, which pushed every gilded surface in the
+     * sanctuary past the bloom threshold and clipped to a flat saturated yellow
+     * — sampled at (255,255,60) on the retablo edging. Gilding should read as
+     * lit metal, not as a light source: the highlight comes from metalness,
+     * the emissive is only there to stop it going black in the shadows.
+     */
+    color: 0xc79a38, roughness: 0.34, metalness: 0.9,
+    emissive: 0x4a3410, emissiveIntensity: 0.2,
   });
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
@@ -493,7 +500,32 @@ export function buildMaterials() {
     color: 0xf2d288, roughness: 0.22, metalness: 0.9,
     emissive: 0x7a5a1c, emissiveIntensity: 0.55,
   });
-  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.28, metalness: 0.04 });
+  /**
+   * The mensa is cream granite, and at roughness 0.28 the sanctuary point light
+   * put a hard specular streak straight down the top slab — seen nearly edge-on
+   * from the nave it clipped the whole altar to pure white. Roughness 0.42
+   * spreads the highlight out so the slab reads as stone with a sheen.
+   */
+  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.42, metalness: 0.04 });
+  /**
+   * Antependium. The reference altar is white marble with a gold front panel,
+   * but the panel needs its own material: reusing M.gold at 0.95 x 3.3 m turned
+   * the entire space under the mensa into a glowing yellow slab. This is the
+   * dimmer, more matte gold of an embroidered frontal.
+   */
+  M.altarFrontal = STD({
+    color: 0xa8812f, roughness: 0.46, metalness: 0.62,
+    emissive: 0x35240a, emissiveIntensity: 0.14,
+  });
+  /** Sanctuary lamp glass: deep red, strongly emissive — a lamp that never goes out. */
+  M.lampRed = STD({
+    color: 0x5e0f12, roughness: 0.22, metalness: 0.0,
+    emissive: 0x8c1610, emissiveIntensity: 1.5,
+  });
+  M.lampRedGlow = STD({
+    color: 0xd8322a, roughness: 0.18,
+    emissive: 0xff4a30, emissiveIntensity: 2.6,
+  });
   M.altarCloth = STD({ map: T.stucco('#f0ece0', { seed: 74, dirt: 0.15 }), roughness: 0.85, emissive: 0x4a4840, emissiveIntensity: 0.2 });
   M.candleWax = STD({ color: 0xf2ead6, roughness: 0.6, emissive: 0x4a4430, emissiveIntensity: 0.25 });
   M.pewWood = STD({
