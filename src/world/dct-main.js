@@ -71,7 +71,17 @@ export function buildMainBuilding(parent, M, opts = {}) {
   const cols = [];
   for (let i = 0; i < nBays * 3; i++) {
     const x = -hw + 1.5 + (i * (W - 3.0)) / (nBays * 3 - 1);
-    if (Math.abs(x) < entryHalf + 1.2) continue; // skip the entrance bay
+    /**
+     * Windows behind the entrance projection.
+     *
+     * This used to skip every column within the entrance bay, on the reasoning
+     * that the projecting bay covers that stretch of wall. It does not: the
+     * projection is 3.4 m deep and 20 m wide, so from any angle off dead-centre
+     * you see past it to a 20 m wide, four-storey-high blank of bare concrete —
+     * the "gap in the window grid". The wall is still there and still visible, so
+     * it gets its windows.
+     */
+    if (Math.abs(x) < 0.4) continue;   // only clear the centre line, for the door
     cols.push(x);
   }
 
@@ -140,6 +150,41 @@ export function buildMainBuilding(parent, M, opts = {}) {
       crest.position.set(MAIN.x, EH - 1.4, EZ - 0.06);
       crest.rotation.y = Math.PI;
       b.addSign(crest);
+    }
+
+    /**
+     * Windows on the projection's front face.
+     *
+     * The surface you look straight at walking up the drive had no opening on it
+     * at all above the door — four storeys of flat concrete under the pediment.
+     * Three evenly spaced lights per floor, inset a little so they read as
+     * punched through the projection rather than stuck on it.
+     */
+    {
+      const cols = 3;
+      const span = MAIN.entryW - 4.6;
+      for (let f = 1; f < N; f++) {
+        const y = f * FH + FH * 0.56;
+        for (let c = 0; c < cols; c++) {
+          const x = MAIN.x + (c - (cols - 1) / 2) * (span / (cols - 1));
+          // the crest and statue niche occupy the centre column at the top
+          const topFloor = f === N - 1;
+          if (topFloor && c === 1) continue;
+          // reveal: a shallow recess so the light sits in the wall
+          b.add(box(winW + 0.30, winH + 0.30, 0.06, 1), 'dctBand',
+            { pos: [x, y, EZ - 0.05] });
+          for (const p of windowUnit(winW, winH, {
+            depth: 0.16, frame: 0.075,
+            glassKey: nightMode && f % 2 === 0 ? 'glassLit' : 'glass',
+            frameKey: 'paintWhite', mullions: 1, transom: true,
+          })) {
+            b.addGeo(p.geo.clone().translate(x, y, EZ - 0.02), p.key);
+          }
+          // sill
+          b.add(box(winW + 0.4, 0.1, 0.24, 1), 'paintWhite',
+            { pos: [x, y - winH / 2 - 0.16, EZ - 0.08] });
+        }
+      }
     }
 
     /* ---------- statue niche ---------- */
