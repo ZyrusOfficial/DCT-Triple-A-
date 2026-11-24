@@ -69,7 +69,7 @@ Measured on the Ryzen-class SwiftShader rig at 1280×720, `--quality low`:
 ```
 ~270-420 draws  ~500k triangles  ~210 geometries  ~140 textures
 build ~9-14 s  (materials is ~85% of it)
-281 colliders   91 interaction zones
+284 colliders   91 interaction zones
 20-27 fps
 ```
 
@@ -131,6 +131,13 @@ These are all documented in code comments at the point of failure. Summarised:
 - 91 interaction zones: 36 original plus 55 for the walkway furniture and the
   whole shrine nave (altar, retablo, San Nicolas, lamp, pews, 14 Stations, side
   doors).
+- Main building: hollow shell (four perimeter walls + slab) with a walk-through
+  entrance, ten furnished classrooms a floor either side of a spine corridor
+  across four storeys — chalkboard, twelve desks and chairs per room, teacher's
+  desk, fluorescent batten, clock, pin board, partitions, stairs at each end, and
+  a lobby with reception counter, timber screen, crest and honour boards.
+- Covered court: the lawn panel that was burying the entire basketball court has
+  been cut back to north and south of the structure.
 
 ## Open work
 
@@ -183,6 +190,29 @@ These are all documented in code comments at the point of failure. Summarised:
   sessions. Third instance of this exact class after the shrine's `tileCream`
   nave floor and its `concreteDark` plinth slab. **Whenever a surface is missing,
   ray-cast down and look at the FIRST hit and its owner, not the second.**
+
+- **A Builder that rebases and yaws its geometry does not author world coordinates.**
+  `dct-main.js` puts the shell and everything else in one `Builder`, then at build
+  time translates every piece by `(-MAIN.x, 0, -MAIN.z)` and parents it to a group
+  with `rotY = +pi/2`. An authored `(ax, az)` therefore becomes world
+  `(MAIN.x + az - MAIN.z, MAIN.z - ax + MAIN.x)` — a swap and a mirror. Authored X
+  carries the building's LENGTH, authored Z its DEPTH. Writing the interior in
+  plain world coordinates produced desks spanning 92 m of X and a 15 m band of Z.
+  The fix that stuck was to stop using world coordinates inside the block at all
+  and convert once through two local helpers (`axOf`, `azOf`); there is now no raw
+  `MAIN.x` in the interior. **If a building has a yaw, derive its interior in a
+  named local frame, never in world numbers.**
+- **A ceiling that is present, correctly sized, and not above you.** After the
+  first axis fix the ceiling spanned the right numbers but sat 95 m along X
+  instead of Z, so looking straight up the corridor returned the sky dome at
+  2394 m from every probe point. Rendering "up" is the cheap tell: a hole to the
+  sky where there should be a soffit. Ray-casting up from several points along
+  the space is faster than reasoning about the transform.
+- **Furniture placed relative to a wall needs the inward sign, not the wall's
+  sign.** Desks march from the chalkboard, which sits on the OUTER wall, so
+  inward is `-sx`. With `+sx` every desk column went through the outer face and
+  the rooms rendered empty while the geometry all "existed". Check the extremes
+  numerically (`dxl` against the room bounds) before rendering; it is one line.
 
 ## Two more traps paid for in blood
 
