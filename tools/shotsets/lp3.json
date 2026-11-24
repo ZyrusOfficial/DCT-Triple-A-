@@ -1,2 +1,0 @@
-[{"name":"lp3","cam":[-80.0,1.7,9.4],"look":[-87.0,1.7,9.4],"fov":80,"hour":11,
- "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const o=[];const dirs=[[0.55,0.83,0],[0.2,0.98,0],[-0.4,0.9,0.15]];for(const d of dirs){const rc=new T.Raycaster(new T.Vector3(-81,1.7,9.4),new T.Vector3(d[0],d[1],d[2]).normalize());const h=rc.intersectObjects(S.children,true).filter(v=>v.object.name.startsWith('main'));o.push('dir'+d+' -> '+(h[0]?h[0].object.name+' dy'+(h[0].point.y-1.7).toFixed(2)+' dx'+(h[0].point.x+81).toFixed(2):'sky'));}return JSON.stringify(o)})()"}]
