@@ -595,30 +595,67 @@ export function buildMainBuilding(parent, M, opts = {}) {
        * passage is exactly bays [ccBay0, ccBay1], so there is no partial bay to
        * reason about and no doorway half-swallowed by a wall.
        */
-      const openS = [];       // { c, w } in zLocal, per side
-      for (let i = 0; i < bays; i++) {
-        if (i >= ccBay0 && i <= ccBay1) {
-          // replaced by the cross-corridor mouth
-          openS.push({ c: z0 + i * bayW, w: bayW, wide: true });
-          continue;
+      /**
+       * Openings, PER SIDE.
+       *
+       * The cross-corridor runs from the façade wall through the depth and meets
+       * the spine at xl = +cW/2 — the FAÇADE-side corridor wall only. The rear
+       * wall at xl = -cW/2 is untouched and keeps a normal classroom door in
+       * every bay. Sharing one opening list between both sides (as the previous
+       * version did) punched the passage mouth through the rear wall as well,
+       * so two rear classrooms stood open to the corridor for no reason.
+       */
+      const openingsFor = (sx) => {
+        const list = [];
+        for (let i = 0; i < bays; i++) {
+          if (sx > 0 && i >= ccBay0 && i <= ccBay1) {
+            // replaced by the cross-corridor mouth
+            list.push({ c: z0 + i * bayW, w: bayW, wide: true });
+            continue;
+          }
+          list.push({ c: z0 + i * bayW + 0.62, w: 1.0 });
         }
-        openS.push({ c: z0 + i * bayW + 0.62, w: 1.0 });
-      }
+        return list;
+      };
 
       for (const sx of [-1, 1]) {
         const azWall = azOf(sx * cW / 2);
-        // solid wall from the end of one opening to the start of the next
-        const edges = [z0];
-        for (const o of openS) { edges.push(o.c, o.c + o.w); }
-        edges.push(z0 + bays * bayW);
-
-        for (let k = 0; k < edges.length; k += 2) {
-          const a = edges[k], bEnd = edges[k + 1];
+        const openS = openingsFor(sx);
+        /**
+         * Solid wall fills the gaps BETWEEN openings — walk a cursor along the
+         * bay run and emit a plaster span for every stretch the openings leave
+         * uncovered.
+         *
+         * The previous version pushed [start, end] of each opening into one flat
+         * `edges` array and then paired them up with `k += 2`. That array was
+         * [z0, c0, c0+w, c1, c1+w, ...], so the pairs came out as (z0, c0) —
+         * a wall from the corridor end to the first door, correct — and then
+         * (c0+w, c1) — the WALL SEGMENT BETWEEN two doors — but ALSO (c0, c0+w)
+         * had been skipped, meaning the code treated each door OPENING as a
+         * solid span and each gap between doors as something to skip. In other
+         * words every doorway ended up filled with plaster and every wall
+         * between doors left out. The corridor was one unbroken 95 m tube with
+         * a few door leaves floating on its face, which is exactly what hi-08
+         * showed.
+         *
+         * Cursor logic cannot make that mistake: it only ever draws the stretches
+         * that are NOT in the opening list.
+         */
+        let cursor = z0;
+        for (const o of openS) {
+          const a = cursor, bEnd = o.c;
           if (bEnd - a > 0.02) {
             b.add(box(bEnd - a, H1, 0.12, 3), 'interiorPlaster', {
               pos: [axOf((a + bEnd) / 2), y0 + H1 / 2, azWall],
             });
           }
+          cursor = Math.max(cursor, o.c + o.w);
+        }
+        const tailStart = cursor, tailEnd = z0 + bays * bayW;
+        if (tailEnd - tailStart > 0.02) {
+          b.add(box(tailEnd - tailStart, H1, 0.12, 3), 'interiorPlaster', {
+            pos: [axOf((tailStart + tailEnd) / 2), y0 + H1 / 2, azWall],
+          });
         }
 
         for (const o of openS) {
