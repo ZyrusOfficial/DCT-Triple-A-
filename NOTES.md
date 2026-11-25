@@ -274,3 +274,42 @@ is fallout from it.
   corridor — a dark wall dead ahead of anyone walking in. Its honour boards had
   the mirror bug, at −cW/2 − 0.02, i.e. 2 cm behind the wall, invisible from
   everywhere. Fit out in world coordinates and convert once.
+
+## Windows: the elevation was a mural
+
+The main building's long walls were four solid boxes with decorative window
+planes applied to the OUTSIDE. The elevation looked right from the lawn and was
+a lie from inside: a ray cast from any classroom at eye *or* sill height hit
+`dctWall` at 3.30 m, and the "windows" were painted on sealed masonry. Every
+interior photograph came out a grey box, and the corridor read as a dark tube.
+
+- **An elevation is not a window.** If the wall has no hole in it, the grid of
+  `windowUnit` planes is decoration. The test is a ray from inside at the
+  window's own height: `OPEN` means glazing, `dctWall` means paint.
+- **`windowUnit` has a `backing` option for this reason.** Its opaque recess
+  slab exists to hide the absence of a hole. Put it inside a real hole and it
+  becomes an opaque panel across the view — the glazing rendered as solid slabs.
+  Pierced walls pass `backing: false`.
+- **Glazing goes at the wall's mid-thickness, not on its face.** A unit at
+  `frontZ + 0.01` sat proud of a sealed wall, which was correct. On a pierced
+  wall the same offset leaves a panel stuck to the outside of the hole.
+- **`bayW/window` geometry has a knock-on for furniture.** The chalkboard had
+  been mounted on the outer wall for the good reason that the outer wall was
+  solid. With real windows it would hang across the glass. Board to the party
+  wall, windows outside, students facing away from the light — which is how a
+  classroom is laid out anyway.
+- **A display board 4 m long and 0.05 m thick, positioned on the depth axis, is
+  a free-standing sheet.** It read as a huge tan panel floating across the
+  windows at eye height. A board on a partition is thin in the LENGTH axis and
+  long in DEPTH, because the partition separates one bay from the next.
+- **Sampling a wall 7 cm below the window band returns solid masonry.** Two
+  probes disagreed about whether the piercings existed; the openings are at
+  `f*FH + FH*0.56 ± 0.925` and the failing sample was at 5.09 m against a band
+  starting at 5.16 m. Compute the opening's exact extent before concluding the
+  geometry is wrong.
+- **Camera inside a wall renders black.** `[-84.5, 5.62, -10]` is the corridor
+  wall itself. Derive interior camera positions from the room's world bounds
+  (`rear room x -93.30..-87.10`), not from an authored-coordinate guess.
+- **A blank corridor view is usually framing.** Shot dead down a 2.2 m tube, all
+  twenty doorways are edge-on and invisible. Angled 2 m off axis they read
+  clearly. Check the angle before concluding the doors are missing.
