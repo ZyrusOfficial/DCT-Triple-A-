@@ -1,0 +1,6 @@
+[
+ { "name": "hi-08-corridor",  "cam": [-86, 1.7, -30], "look": [-86, 1.7, 20], "fov": 78, "hour": 11 },
+ { "name": "hi-09-corridor-n","cam": [-86, 1.7, 9.4], "look": [-86, 1.9, 40], "fov": 80, "hour": 11 },
+ { "name": "hi-10-classroom", "cam": [-81.0, 1.75, -14], "look": [-81.0, 1.4, 4], "fov": 82, "hour": 11 },
+ { "name": "hi-12-stair",     "cam": [-86, 1.7, 9.4], "look": [-86, 1.9, 18.0], "fov": 88, "hour": 11 }
+]

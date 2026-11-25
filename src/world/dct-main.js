@@ -78,13 +78,90 @@ export function buildMainBuilding(parent, M, opts = {}) {
    * player could never get in, so the colliders become the four walls and the
    * floor, and the doorway in the entrance projection is left open.
    */
+  /**
+   * Window grid, computed BEFORE the shell so the shell can be pierced with it.
+   *
+   * These numbers used to live further down, next to the window decoration, and
+   * the walls above them were four solid boxes with decorative window planes
+   * applied to the outside. From outside that read correctly. From inside it was
+   * a cave: a ray cast from any classroom at eye OR sill height hit dctWall at
+   * 3.30 m, because the "windows" were painted on a sealed wall. The grid has to
+   * be known first, so the masonry can actually have holes in it.
+   *
+   * Column spacing is unchanged — 4 lights per 6 m structural bay — so the
+   * elevation is identical from outside.
+   */
+  const bay = 6.0;
+  const nBays = Math.round(W / bay);
+  const winW = 1.15, winH = 1.85;
+  const entryHalf = MAIN.entryW / 2;
+  const cols = [];
+  for (let i = 0; i < nBays * 3; i++) {
+    const x = -hw + 1.5 + (i * (W - 3.0)) / (nBays * 3 - 1);
+    /**
+     * Windows behind the entrance projection.
+     *
+     * This used to skip every column within the entrance bay, on the reasoning
+     * that the projecting bay covers that stretch of wall. It does not: the
+     * projection is 3.4 m deep and 20 m wide, so from any angle off dead-centre
+     * you see past it to a 20 m wide, four-storey-high blank of bare concrete —
+     * the "gap in the window grid". The wall is still there and still visible, so
+     * it gets its windows.
+     */
+    if (Math.abs(x) < 0.4) continue;   // only clear the centre line, for the door
+    cols.push(x);
+  }
+
+  /**
+   * Per-floor opening lists for the two long walls, in the wall's own local X
+   * (which is the building's LENGTH axis, centred on the wall).
+   *
+   * Floor 0 is left un-pierced: it is the arcade level, shaded by the walkway
+   * roof and the porte-cochère, and it carries the entrance. Floors 1..N-1 get a
+   * light in every column. Heights are relative to each floor's base.
+   */
+  const wallOpenings = (floorIndex) => {
+    if (floorIndex === 0) return [];
+    const out = [];
+    for (const x of cols) out.push({ x, w: winW, h: winH, y: FH * 0.56 });
+    return out;
+  };
+
   const WT = 0.45;
   {
-    // front and rear walls
+    /**
+     * Front and rear walls, PIERCED at every window.
+     *
+     * Each storey is its own band of masonry with the floor's openings cut out
+     * of it by wallWithOpenings. That is what turns the elevation from a mural
+     * into a building: the same grid you see outside is a grid of holes, so the
+     * classrooms behind it get daylight instead of joining the corridor in a
+     * windowless tunnel.
+     *
+     * Openings are cut per floor and the bands stack, rather than one 15 m wall
+     * with 40 holes, because wallWithOpenings is a 2-D operation: it wants a
+     * rectangle and a list of holes inside it, and 4 separate bands is both
+     * simpler and exactly how the string courses already divide the facade.
+     *
+     * Colliders stay as four full-height walls (see below) — you walk through
+     * the doorways, not the windows, so the walkable AABB is unchanged.
+     */
     for (const sz of [-1, 1]) {
-      b.add(box(W, H, WT, TEXSCALE.concrete), 'dctWall', {
-        pos: [MAIN.x, H / 2, MAIN.z + sz * (hd - WT / 2)], collide: true,
-      });
+      const wallZ = MAIN.z + sz * (hd - WT / 2);
+      for (let f = 0; f < N; f++) {
+        const ops = wallOpenings(f);
+        if (!ops.length) {
+          b.add(box(W, FH, WT, TEXSCALE.concrete), 'dctWall', {
+            pos: [MAIN.x, f * FH + FH / 2, wallZ],
+          });
+          continue;
+        }
+        for (const g of wallWithOpenings(W, FH, WT, ops, TEXSCALE.concrete)) {
+          b.addGeo(g.translate(MAIN.x, f * FH, wallZ), 'dctWall');
+        }
+      }
+      // one collider for the whole wall, as before
+      b.addCollider([MAIN.x - hw, 0, wallZ - WT / 2], [MAIN.x + hw, H, wallZ + WT / 2]);
     }
     // end walls
     for (const sx of [-1, 1]) {
@@ -167,50 +244,55 @@ export function buildMainBuilding(parent, M, opts = {}) {
     }
   }
 
-  /* ========================================================== WINDOW GRID */
-  // 4 windows per structural bay, bays of 6 m across the full façade.
-  const bay = 6.0;
-  const nBays = Math.round(W / bay);
-  const winW = 1.15, winH = 1.85;
-  const entryHalf = MAIN.entryW / 2;
-  const cols = [];
-  for (let i = 0; i < nBays * 3; i++) {
-    const x = -hw + 1.5 + (i * (W - 3.0)) / (nBays * 3 - 1);
-    /**
-     * Windows behind the entrance projection.
-     *
-     * This used to skip every column within the entrance bay, on the reasoning
-     * that the projecting bay covers that stretch of wall. It does not: the
-     * projection is 3.4 m deep and 20 m wide, so from any angle off dead-centre
-     * you see past it to a 20 m wide, four-storey-high blank of bare concrete —
-     * the "gap in the window grid". The wall is still there and still visible, so
-     * it gets its windows.
-     */
-    if (Math.abs(x) < 0.4) continue;   // only clear the centre line, for the door
-    cols.push(x);
-  }
 
+  /**
+   * Glazing, set INTO the piercings rather than applied to the outside face.
+   *
+   * Two things had to change when the walls stopped being solid.
+   *
+   * First, position. Each unit used to sit at `frontZ + 0.01`, just proud of the
+   * outer face — correct for decoration on a sealed wall. Now there is a hole
+   * through the masonry, and a unit floating on the outside of it reads as a
+   * panel stuck to the façade: the render showed red slabs with cream frame bars
+   * and no opening at all. The unit belongs at the wall's mid-thickness, where a
+   * window actually sits.
+   *
+   * Second, `backing: false`. windowUnit's recess slab is an opaque box whose
+   * job is to hide the fact that there is no hole. Inside a real hole it is an
+   * opaque panel across a view, and it was what turned the glazing dark.
+   *
+   * Ground floor is skipped on these walls: it was never pierced (the arcade and
+   * the entrance occupy it) so a unit there would again be decoration on solid
+   * masonry, which is what it always was on that level anyway.
+   */
+  const wallMidFront = frontZ - WT / 2;
+  const wallMidRear = MAIN.z + hd - WT / 2;
   for (let f = 0; f < N; f++) {
     const y = f * FH + FH * 0.56;
-    for (const x of cols) {
-      // Front face windows
-      for (const p of windowUnit(winW, winH, {
-        depth: 0.16, frame: 0.075,
-        glassKey: nightMode && (f % 2 === 0) ? 'glassLit' : 'glass',
-        frameKey: 'paintWhite', mullions: 1, transom: true,
-      })) {
-        b.addGeo(p.geo.clone().translate(MAIN.x + x, y, frontZ + 0.01), p.key);
-      }
-      // Rear face
-      for (const p of windowUnit(winW, winH, {
-        depth: 0.16, frame: 0.075,
-        glassKey: nightMode && (f % 3 === 0) ? 'glassLit' : 'glass',
-        frameKey: 'paintWhite', mullions: 1,
-      })) {
-        b.addGeo(p.geo.clone().rotateY(Math.PI).translate(MAIN.x + x, y, MAIN.z + hd + 0.01), p.key);
+    if (f > 0) {
+      for (const x of cols) {
+        // Front face — façade side
+        for (const p of windowUnit(winW, winH, {
+          depth: 0.16, frame: 0.075, backing: false,
+          glassKey: nightMode && (f % 2 === 0) ? 'glassLit' : 'glass',
+          frameKey: 'paintWhite', mullions: 1, transom: true,
+        })) {
+          b.addGeo(p.geo.clone().translate(MAIN.x + x, y, wallMidFront), p.key);
+        }
+        // Rear face
+        for (const p of windowUnit(winW, winH, {
+          depth: 0.16, frame: 0.075, backing: false,
+          glassKey: nightMode && (f % 3 === 0) ? 'glassLit' : 'glass',
+          frameKey: 'paintWhite', mullions: 1,
+        })) {
+          b.addGeo(p.geo.clone().rotateY(Math.PI).translate(MAIN.x + x, y, wallMidRear), p.key);
+        }
       }
     }
-    // Side windows
+    /**
+     * Side (end) windows stay decorative: the end walls are still solid boxes,
+     * so these keep their backing and sit on the outer face as before.
+     */
     for (const sx of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
         const z = MAIN.z - hd + 3.0 + i * 4.2;
@@ -719,24 +801,40 @@ export function buildMainBuilding(parent, M, opts = {}) {
             });
           }
 
-          // chalkboard on the OUTER wall, long along the corridor
-          const boardXl = sx < 0 ? xl0 + 0.10 : xl1 - 0.10;
-          b.add(box(bayW * 0.62, 1.12, 0.06, 1), 'chalkboard', {
-            pos: [axOf(zl), y0 + 1.74, azOf(boardXl)],
+          /**
+           * Chalkboard on the PARTY wall (the partition), not the outer wall.
+           *
+           * It used to hang on the outer wall because that wall was solid. Now
+           * that the masonry is pierced with real windows — which is the whole
+           * point of the exercise — a board on that wall would be mounted across
+           * the glass. Every classroom in the country puts the board on the wall
+           * between rooms and the windows on the outside wall, for the obvious
+           * reason: daylight comes from behind the students, not through the
+           * thing you are writing on.
+           *
+           * The board therefore sits at the bay's STARTING edge (the partition at
+           * z0 + i*bayW), which is the length axis, and faces down the room.
+           * `boardZ` is that edge; the desks then march AWAY from it along the
+           * length instead of across the depth.
+           */
+          const boardZ = z0 + i * bayW + 0.10;
+          const boardMid = xlMid;
+          b.add(box(0.06, 1.12, roomD * 0.62, 1), 'chalkboard', {
+            pos: [axOf(boardZ), y0 + 1.74, azOf(boardMid)],
           });
           for (const ry of [0.36, 2.34]) {
-            b.add(box(bayW * 0.66, ry === 0.36 ? 0.07 : 0.06, 0.12, 1), 'wood', {
-              pos: [axOf(zl), y0 + ry, azOf(boardXl + sx * 0.03)],
+            b.add(box(0.12, ry === 0.36 ? 0.07 : 0.06, roomD * 0.66, 1), 'wood', {
+              pos: [axOf(boardZ + 0.03), y0 + ry, azOf(boardMid)],
             });
           }
 
-          // teacher's desk, long along the corridor
-          b.add(box(1.38, 0.06, 0.64, 2), 'deskTop', {
-            pos: [axOf(zl + 0.9), y0 + 0.78, azOf(boardXl - sx * 1.05)],
+          // teacher's desk, in front of and facing the board
+          b.add(box(0.64, 0.06, 1.38, 2), 'deskTop', {
+            pos: [axOf(boardZ + 1.05), y0 + 0.78, azOf(boardMid)],
           });
-          for (const qz of [-1, 1]) {
-            b.add(box(0.06, 0.75, 0.58, 1), 'deskFrame', {
-              pos: [axOf(zl + 0.9 + qz * 0.6), y0 + 0.39, azOf(boardXl - sx * 1.05)],
+          for (const qx of [-1, 1]) {
+            b.add(box(0.58, 0.75, 0.06, 1), 'deskFrame', {
+              pos: [axOf(boardZ + 1.05), y0 + 0.39, azOf(boardMid + qx * 0.6)],
             });
           }
 
@@ -763,9 +861,41 @@ export function buildMainBuilding(parent, M, opts = {}) {
                * vertices landed at x -95, past the building's -93.3 face, and
                * the rooms rendered empty.
                */
-              const dAvail = roomD - 2.2;                 // usable depth
-              const dxl = boardXl - sx * (0.9 + (c + 0.5) * (dAvail / cols2));
-              const dzl = zl - bayW / 2 + 1.9 + r2 * ((bayW - 2.4) / rows);
+              /**
+               * Laid out facing the board, which now sits at the bay's leading
+               * edge: rows march DOWN the room away from it (length axis), and
+               * the three columns spread ACROSS the depth.
+               */
+              /**
+               * Row spacing has to leave room for the CHAIR, not just the desk.
+               *
+               * Each desk sits at `dzl` and its chair stands behind it at
+               * dzl + 0.72 with a 0.34 m back, so the occupied run for one row
+               * reaches dzl + 0.89. With `dAvail / rows` spacing and a 0.5 cell
+               * offset, the last row landed at 9.20 in a bay that ends at 9.96 —
+               * the seat fitted but the chair back and its four legs burst
+               * through the partition, and those were the grey stubs standing in
+               * a row along the window wall in the render.
+               *
+               * Reserve the chair depth up front, then divide what is left.
+               */
+              const CHAIR_RUN = 0.95;
+              const dAvail = bayW - 2.6 - CHAIR_RUN;      // run available past the board
+              const dzl = boardZ + 2.6 + (r2 + 0.5) * (dAvail / rows);
+              /**
+               * Spread the columns across the room's USABLE width, evenly.
+               *
+               * The obvious `xl0 + inset + (c + 0.5) * (usable / cols2)` puts the
+               * three centres in the middle third of the room: with a 6.2 m room
+               * and 1.1 m insets it produced x -5.50, -4.20, -2.90 — a 2.6 m
+               * spread inside 4.0 m of usable width, so every desk hugged the
+               * corridor and the window side was bare floor. Spacing the
+               * (cols2 - 1) GAPS instead of the cells fills the span.
+               */
+              const usableA = xl0 + 1.10, usableB = xl1 - 1.10;
+              const dxl = cols2 === 1
+                ? (usableA + usableB) / 2
+                : usableA + c * (usableB - usableA) / (cols2 - 1);
               const dy = y0 + 0.045;
               b.add(box(0.64, 0.05, 0.46, 2), 'deskTop',
                 { pos: [axOf(dzl), dy + 0.72, azOf(dxl)] });
@@ -773,14 +903,14 @@ export function buildMainBuilding(parent, M, opts = {}) {
                 b.add(box(0.045, 0.70, 0.045, 1), 'deskFrame',
                   { pos: [axOf(dzl + qx * 0.27), dy + 0.35, azOf(dxl + qz * 0.18)] });
               }
-              // chair
+              // chair, set back from the desk, facing the board
               b.add(box(0.40, 0.045, 0.38, 1.6), 'deskTop',
-                { pos: [axOf(dzl), dy + 0.44, azOf(dxl - sx * 0.54)] });
+                { pos: [axOf(dzl + 0.54), dy + 0.44, azOf(dxl)] });
               b.add(box(0.40, 0.34, 0.04, 1.6), 'deskTop',
-                { pos: [axOf(dzl), dy + 0.63, azOf(dxl - sx * 0.72)] });
+                { pos: [axOf(dzl + 0.72), dy + 0.63, azOf(dxl)] });
               for (const qx of [-1, 1]) for (const qz of [-1, 1]) {
                 b.add(box(0.035, 0.44, 0.035, 1), 'deskFrame',
-                  { pos: [axOf(dzl + qx * 0.16), dy + 0.22, azOf(dxl - sx * 0.54 + qz * 0.15)] });
+                  { pos: [axOf(dzl + 0.54 + qx * 0.15), dy + 0.22, azOf(dxl + qz * 0.16)] });
               }
             }
           }
@@ -789,7 +919,7 @@ export function buildMainBuilding(parent, M, opts = {}) {
           b.add(box(1.15, 0.07, 0.20, 1), 'fluorescent',
             { pos: [axOf(zl), y0 + H1 - 0.08, azOf(xlMid)] });
           b.add(cylinder(0.19, 0.19, 0.05, 16), 'clockFace', {
-            pos: [axOf(zl - bayW * 0.30), y0 + 2.70, azOf(xl0 + 0.14)],
+            pos: [axOf(boardZ + 0.02), y0 + 2.70, azOf(xl1 - 0.9)],
             rot: [0, 0, Math.PI / 2],
           });
 
