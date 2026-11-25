@@ -110,6 +110,19 @@ async function boot() {
   player = new Player(camera, world);
   inter = new Interaction(scene, player);
   registerInteractions(inter, scene, { ...(world.refs || {}), sky }, L);
+  /**
+   * Publish the registered zones back onto the World.
+   *
+   * This is why `stats.interactables` read 0 on every build for several
+   * sessions. The zones were all there and all working — 36 of them — but the
+   * number reported by the harness came from World#interactables, an array that
+   * was initialised in the constructor and never written to by anything. It only
+   * ever held `[]`. The stat was a lie, and it made a working feature look like
+   * an unimplemented one.
+   *
+   * The World owns the list now, so the browser and the headless harness agree.
+   */
+  world.interactables = inter.zones;
   inter.onChange = (label) => {
     if (label) {
       ui.reticle.classList.add('hot');

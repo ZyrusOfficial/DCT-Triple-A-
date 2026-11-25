@@ -1,0 +1,2 @@
+[{"name":"rc","cam":[-86,1.7,-20],"look":[-86,1.7,10],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;const o=[];for(const x of [-92,-90,-88,-87,-86,-85,-84,-82,-80]){const rc=new T.Raycaster(new T.Vector3(x,0.5,-20),new T.Vector3(0,1,0));const h=rc.intersectObjects(S.children,true).filter(v=>v.object.name.startsWith('main'));o.push('x='+x+' -> '+(h[0]?h[0].object.name.replace('main:','')+'@y'+h[0].point.y.toFixed(2):'VOID'));}return JSON.stringify(o)})()"}]

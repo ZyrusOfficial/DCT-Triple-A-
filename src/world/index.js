@@ -17,7 +17,7 @@ import { put } from './place.js';
 import { Builder, box, cylinder, sphere, TEXSCALE } from './kit.js';
 import { buildTown } from './town.js';
 import { buildTerrain } from './terrain.js';
-import { L } from './layout.js';
+import { L, SCOPE } from './layout.js';
 
 function kitColliders(list) {
   return list.map((c) => ({ min: c.min, max: c.max }));
@@ -123,7 +123,10 @@ export class World {
     stage('gate');
 
     onProgress(0.70, 'modelling the plaza');
+    // Collect the colliders this builder produced; see the note in
+    // buildPlazaExtras about them having been discarded.
     this.buildPlazaExtras(M);
+    this.colliders.push(...(this.plazaColliders || []));
 
     stage('plaza');
 
@@ -157,8 +160,43 @@ export class World {
     // small is what makes the shrine behind it read tall.
     const RB = 3.1;
     b.add(cylinder(RB + 0.42, RB + 0.55, 0.42, 8), 'concreteTrim', { pos: [PX, 0.21, PZ], collide: true });
-    b.add(cylinder(RB, RB, 0.3, 8), 'concreteDark', { pos: [PX, 0.55, PZ] });
-    b.add(cylinder(RB - 0.28, RB - 0.28, 0.05, 8), 'water', { pos: [PX, 0.68, PZ] });
+    // Lined with pale tile: a bare concreteDark cylinder faces away from the sun
+    // all day and renders as a black well. See M.basinLiner.
+    b.add(cylinder(RB, RB, 0.30, 8), 'basinLiner', { pos: [PX, 0.55, PZ] });
+    /**
+     * Coping, as an ANNULUS and not a disc.
+     *
+     * A solid cylinder here is a lid: it caps the basin and the water goes
+     * invisible. RingGeometry is flat in XY, so rotateX(-pi/2) lays it down as a
+     * horizontal ring.
+     */
+    {
+      const coping = new THREE.RingGeometry(RB - 0.20, RB + 0.02, 8, 1);
+      coping.rotateX(-Math.PI / 2);
+      coping.translate(PX, 0.755, PZ);
+      b.addGeo(coping, 'concreteTrim');
+      /**
+       * Outer fascia, open at both ends.
+       *
+       * The kit's `cylinder()` has no openEnded flag, and a capped cylinder here
+       * is a LID: a solid disc across the whole basin at y 0.70, which hid the
+       * water a second time (the first being the liner's own top cap). A raw
+       * CylinderGeometry with openEnded = true is the only way to get a rim that
+       * does not close over the bowl.
+       */
+      const fascia = new THREE.CylinderGeometry(RB + 0.04, RB + 0.06, 0.16, 8, 1, true);
+      fascia.translate(PX, 0.70, PZ);
+      b.addGeo(fascia, 'concreteTrim');
+    }
+    /**
+     * Water surface ABOVE the liner's top cap.
+     *
+     * The liner is a capped cylinder, so its top face at y 0.70 is a solid
+     * concrete lid across the whole basin — water placed under it is invisible
+     * and the fountain reads as an empty pale bowl. The surface belongs a few
+     * centimetres above the liner rim, just under the coping.
+     */
+    b.add(cylinder(RB - 0.22, RB - 0.22, 0.04, 8), 'water', { pos: [PX, 0.735, PZ] });
     // central pedestal + one shallow bowl
     b.add(cylinder(0.44, 0.62, 0.95, 12), 'concreteTrim', { pos: [PX, 1.12, PZ] });
     b.add(cylinder(1.15, 1.22, 0.11, 20), 'concreteTrim', { pos: [PX, 1.62, PZ] });
@@ -167,13 +205,23 @@ export class World {
     // small bronze finial — a saint's silhouette, not a giant ball
     b.add(cylinder(0.16, 0.22, 0.5, 10), 'statueRobed', { pos: [PX, 2.68, PZ] });
     b.add(sphere(0.11, 10), 'statue', { pos: [PX, 3.0, PZ] });
-    // hair-thin water jets, barely visible but they catch the light
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      put(b, cylinder(0.015, 0.03, 0.7, 4), 'water',
-        [PX + Math.cos(a) * 0.55, 2.05, PZ + Math.sin(a) * 0.55],
-        { rot: [Math.cos(a) * 0.22, 0, -Math.sin(a) * 0.22] });
+    /**
+     * Water: a thin curtain sheet, not tilted cylinders.
+     *
+     * The jets used to be six `put()` cylinders rotated about their own origins,
+     * which swings them bodily out of the basin — at 0.7 m long and 3 cm across
+     * they read as a giant pale tube spearing out across the plaza. A short
+     * falling sheet from the upper bowl to the lower basin is both cheaper and
+     * what a fountain of this size actually looks like.
+     */
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const rr = 0.88;
+      b.add(cylinder(0.012, 0.012, 0.9, 4), 'water',
+        { pos: [PX + Math.cos(a) * rr, 1.22, PZ + Math.sin(a) * rr] });
     }
+    // still water in the upper bowl, slightly domed
+    b.add(cylinder(0.86, 0.46, 0.08, 20), 'water', { pos: [PX, 1.75, PZ] });
 
     /* -------------------------------------------------- plaza lamp posts */
     const lampPositions = [];
@@ -235,26 +283,96 @@ export class World {
     }
 
     /* ------------------------------------------------------- town hall */
-    // Capas Municipal Hall: 2 storeys, white with a colonnade and a pediment.
-    {
+    /**
+     * Capas Municipal Hall: 2 storeys, white with a colonnade and a pediment.
+     *
+     * OUT OF SCOPE. The brief is the DCT campus, the shrine and the church park;
+     * the town hall stands across the highway on the far side of the park and is
+     * never part of any view of the three subjects. Kept behind SCOPE.municipal
+     * so the portico/pediment work is not thrown away — flip it to true to bring
+     * the building back.
+     */
+    if (SCOPE.municipal) {
       const hx = L.municipal.x, hz = L.municipal.z - 8, W = 40, D = 16, H = 11.5;
       b.add(box(W, H, D, TEXSCALE.concrete), 'paintWhite', { pos: [hx, H / 2, hz], collide: true });
-      // portico columns
+      /**
+       * Portico: a free-standing colonnade standing clear of the wall.
+       *
+       * The columns used to sit at D/2 + 2.4 while the wall face is at D/2, so
+       * they were half-buried and the portico read as pilasters painted on a
+       * flat box. Pushed to +3.6 and given bases and capitals.
+       */
+      const PORCH_Z = hz + D / 2 + 3.6;
       for (let i = 0; i < 8; i++) {
         const x = hx - W / 2 + 3 + i * (W - 6) / 7;
-        const cp = cylinder(0.42, 0.46, 6.4, 14);
-        b.addGeo(cp.clone().translate(x, 3.2, hz + D / 2 + 2.4), 'paintWhite');
-        b.add(box(1.1, 0.3, 1.1, 1), 'paintWhite', { pos: [x, 0.15, hz + D / 2 + 2.4] });
+        // shaft
+        const cp = cylinder(0.40, 0.46, 6.3, 14);
+        b.addGeo(cp.clone().translate(x, 3.6, PORCH_Z), 'paintWhite');
+        // base and capital
+        b.add(box(1.16, 0.34, 1.16, 1), 'paintWhite', { pos: [x, 0.20, PORCH_Z] });
+        b.add(box(1.02, 0.26, 1.02, 1), 'paintWhite', { pos: [x, 6.55, PORCH_Z] });
+        // flute shadow: two thin dark strips per shaft read as fluting at distance
+        for (const q of [-1, 1]) {
+          b.add(box(0.05, 6.0, 0.05, 1), 'concreteDark',
+            { pos: [x + q * 0.30, 3.6, PORCH_Z + 0.34] });
+        }
       }
-      b.add(box(W + 1.2, 0.7, 5.4, 2), 'paintWhite', { pos: [hx, 6.9, hz + D / 2 + 2.0] });
-      // pediment
+      // porch roof beams spanning the colonnade
+      for (let i = 0; i < 8; i++) {
+        const x = hx - W / 2 + 3 + i * (W - 6) / 7;
+        b.add(box(0.28, 0.3, 4.2, 1), 'paintWhite', { pos: [x, 6.85, PORCH_Z - 1.3] });
+      }
+      b.add(box(W - 4.0, 0.26, 4.4, 2), 'paintWhite', { pos: [hx, 7.02, PORCH_Z - 1.4] });
+      /**
+       * Entablature and pediment.
+       *
+       * The colonnade stood 2.4 m proud of the wall but the columns were plain
+       * cylinders and the pediment was extruded in the wrong plane, so from the
+       * front the hall read as a blank white box with slots cut in it — no
+       * colonnade, no pediment, nothing civic.
+       *
+       * ExtrudeGeometry extrudes along +Z, so a Shape drawn in XY already faces
+       * the right way for a facade looking down +Z; the depth must be small and
+       * the whole thing placed at the front face.
+       */
+      b.add(box(W + 1.6, 0.8, 6.2, 2), 'paintWhite', { pos: [hx, 7.0, hz + D / 2 + 1.9] });
       const shape = new THREE.Shape();
-      shape.moveTo(-W / 2, 0); shape.lineTo(W / 2, 0); shape.lineTo(0, 3.4); shape.closePath();
-      const ped = new THREE.ExtrudeGeometry(shape, { depth: 1.0, bevelEnabled: false });
-      ped.translate(hx, 7.2, hz + D / 2 + 1.2);
+      shape.moveTo(-W / 2 - 0.8, 0);
+      shape.lineTo(W / 2 + 0.8, 0);
+      shape.lineTo(0, 3.6);
+      shape.closePath();
+      const ped = new THREE.ExtrudeGeometry(shape, { depth: 1.4, bevelEnabled: false });
+      ped.translate(hx, 7.4, hz + D / 2 + 1.4);
       b.addGeo(ped, 'paintWhite');
+      // raking cornice, so the pediment reads as a layered mass
+      for (const sgn of [-1, 1]) {
+        // Half-width and rise of ONE raking edge, so the cornice lies along the
+        // gable slope exactly and stops at the apex and the eave.
+        const halfW = W / 2 + 0.8;
+        const rise = 3.6;
+        const rake = new THREE.BoxGeometry(Math.hypot(halfW, rise) - 0.3, 0.36, 1.7);
+        rake.rotateZ(-sgn * Math.atan2(rise, halfW));
+        rake.translate(hx + sgn * halfW / 2, 7.4 + rise / 2 + 0.1, hz + D / 2 + 1.55);
+        b.addGeo(rake, 'paintWhite');
+      }
+      // tympanum relief: a small crest disc on the pediment face
+      {
+        // A cylinder's axis is +Y; rotateX(+pi/2) turns it to face +Z, which is
+        // the facade direction. rotateX(-pi/2) faces it backwards and it reads
+        // as a dark hole in the pediment.
+        const disc = new THREE.CylinderGeometry(0.8, 0.8, 0.18, 24);
+        disc.rotateX(Math.PI / 2);
+        disc.translate(hx, 8.55, hz + D / 2 + 2.9);
+        b.addGeo(disc, 'brass');
+        // raised rim so the disc reads as a medallion, not a painted spot
+        const rim = new THREE.TorusGeometry(0.82, 0.07, 6, 22);
+        rim.translate(hx, 8.55, hz + D / 2 + 3.0);
+        b.addGeo(rim, 'brass');
+      }
       // roof
-      b.add(box(W + 1.6, 0.5, D + 1.6, 2), 'roofGray', { pos: [hx, H + 0.2, hz] });
+      // Flat roof BEHIND the pediment only, so it cannot cut across the gable
+      // face. Sized to the body depth and pushed back.
+      b.add(box(W + 0.4, 0.5, D + 0.4, 2), 'roofGray', { pos: [hx, H + 0.2, hz - 0.9] });
       // windows
       for (let f = 0; f < 2; f++) {
         for (let i = 0; i < 9; i++) {
@@ -283,7 +401,39 @@ export class World {
         b.add(box(W + 1.0, 0.12, 0.14, 1), 'steel', { pos: [cx, H - 0.05, z] });
       }
       const roofParts = new THREE.Group();
-      b.add(box(W + 2.0, 0.14, D + 2.0, 2), 'galv', { pos: [cx, H + 0.2, cz] });
+      /**
+       * Pitched sheet roof on purlins.
+       *
+       * A single flat slab of galvanised sheet is the least convincing surface on
+       * the whole campus — covered courts in the Philippines are shallow-pitched
+       * long-run roofs on exposed steel, and that shallow pitch is exactly what
+       * makes them read correctly from a distance.
+       */
+      {
+        const RISE = 1.9;
+        const halfD = (D + 2.0) / 2;
+        const slope = Math.hypot(halfD, RISE);
+        const ang = Math.atan2(RISE, halfD);
+        for (const sz of [-1, 1]) {
+          // For the +Z panel the eave is at +halfD and the ridge at 0, so Y falls
+          // as Z rises: rotateX(+ang).
+          const g = new THREE.BoxGeometry(W + 2.0, 0.12, slope);
+          g.rotateX(sz * ang);
+          g.translate(cx, H + 0.2 + RISE / 2, cz + sz * (halfD / 2));
+          b.addGeo(g, 'galv');
+        }
+        // ridge cap and eave fascias
+        b.add(box(W + 2.2, 0.16, 0.3, 2), 'galv', { pos: [cx, H + 0.2 + RISE, cz] });
+        for (const sz of [-1, 1]) {
+          b.add(box(W + 2.2, 0.28, 0.14, 1), 'steel',
+            { pos: [cx, H + 0.16, cz + sz * halfD] });
+        }
+        // purlins visible from underneath
+        for (let i = 0; i <= 8; i++) {
+          const z = cz - D / 2 + (i * D) / 8;
+          b.add(box(W + 1.2, 0.12, 0.1, 1), 'steel', { pos: [cx, H - 0.02, z] });
+        }
+      }
       // low parapet
       for (const [dx, dz, w2, d2] of [[0, -D / 2 - 0.9, W + 2, 0.15], [0, D / 2 + 0.9, W + 2, 0.15],
                                       [-W / 2 - 0.9, 0, 0.15, D + 2], [W / 2 + 0.9, 0, 0.15, D + 2]]) {
@@ -291,6 +441,134 @@ export class World {
       }
       // court floor (green/terracotta)
       b.addGeo(rect(cx - W / 2 + 0.4, cz - D / 2 + 0.4, cx + W / 2 - 0.4, cz + D / 2 - 0.4, 0.06, 4), 'courtFloor');
+
+      /**
+       * Basketball court: markings, hoops, backboards, bleachers.
+       *
+       * The court was a bare green rectangle under a roof — which, from inside,
+       * is what an empty warehouse looks like. A covered court in a Philippine
+       * school is the busiest structure on campus, and it reads as one almost
+       * entirely through its painted lines and its two hoops.
+       *
+       * FIBA-ish proportions, scaled to the 29.2 x 20.6 m slab: the painted
+       * court is 28 x 15 with a 2 m apron, which is what these sheds actually
+       * fit. Lines are thin boxes 1 cm above the floor so they cannot z-fight it.
+       */
+      {
+        const LY = 0.075;                       // just above the 0.06 slab
+        const CW = 28.0, CD = 15.0;             // painted court
+        const lx0 = cx - CW / 2, lx1 = cx + CW / 2;
+        const lz0 = cz - CD / 2, lz1 = cz + CD / 2;
+        const white = 'courtLine';
+        // touchlines and sidelines
+        for (const z of [lz0, lz1]) {
+          b.add(box(CW + 0.1, 0.012, 0.08, 1), white, { pos: [cx, LY, z] });
+        }
+        for (const x of [lx0, lx1]) {
+          b.add(box(0.08, 0.012, CD + 0.1, 1), white, { pos: [x, LY, cz] });
+        }
+        // centre line and centre circle
+        b.add(box(0.08, 0.012, CD, 1), white, { pos: [cx, LY, cz] });
+        {
+          const ring = new THREE.RingGeometry(1.78, 1.86, 36, 1);
+          ring.rotateX(-Math.PI / 2);
+          ring.translate(cx, LY, cz);
+          b.addGeo(ring, white);
+        }
+        // key, free-throw circle and three-point arc at each end
+        for (const sgn of [-1, 1]) {
+          const bx = cx + sgn * (CW / 2);
+          // key: 4.9 m wide x 5.8 m deep
+          const kx = bx - sgn * 5.8;
+          for (const q of [-1, 1]) {
+            b.add(box(5.8, 0.012, 0.08, 1), white,
+              { pos: [(bx + kx) / 2, LY, cz + q * 2.45] });
+          }
+          b.add(box(0.08, 0.012, 4.9, 1), white, { pos: [kx, LY, cz] });
+          // free-throw circle
+          const ft = new THREE.RingGeometry(1.78, 1.86, 30, 1);
+          ft.rotateX(-Math.PI / 2);
+          ft.translate(kx, LY, cz);
+          b.addGeo(ft, white);
+          // three-point arc: a chain of short chords, since there is no arc primitive
+          const R3 = 6.75, N3 = 26;
+          for (let i = 0; i < N3; i++) {
+            const a0 = -Math.PI * 0.36 + (i / N3) * Math.PI * 0.72;
+            const a1 = -Math.PI * 0.36 + ((i + 1) / N3) * Math.PI * 0.72;
+            const p0 = [bx + sgn * Math.cos(a0) * R3 * 0.78, cz + Math.sin(a0) * R3];
+            const p1 = [bx + sgn * Math.cos(a1) * R3 * 0.78, cz + Math.sin(a1) * R3];
+            const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+            const g = box(len, 0.012, 0.07, 1);
+            g.rotateY(-Math.atan2(p1[1] - p0[1], p1[0] - p0[0]));
+            g.translate((p0[0] + p1[0]) / 2, LY, (p0[1] + p1[1]) / 2);
+            b.addGeo(g, white);
+          }
+
+          /**
+           * Hoop assembly: post, boom, backboard, ring, net.
+           *
+           * The ring is at the regulation 3.05 m, the backboard 1.05 x 1.80, and
+           * the post stands just outside the baseline. These are the objects that
+           * make the shed read as a court from across the yard, so they are
+           * modelled rather than painted.
+           */
+          const postX = bx + sgn * 1.5;
+          b.add(cylinder(0.13, 0.16, 3.4, 10), 'steel',
+            { pos: [postX, 1.70, cz], collide: true });
+          // boom reaching back over the baseline to the ring
+          b.add(box(0.14, 0.14, 1.5, 1), 'steel',
+            { pos: [postX - sgn * 0.55, 3.35, cz] });
+          b.add(box(0.9, 0.10, 0.10, 1), 'steel',
+            { pos: [postX - sgn * 1.22, 3.30, cz] });
+          // backboard, facing the court
+          const band = new THREE.BoxGeometry(0.06, 1.05, 1.80);
+          band.translate(postX - sgn * 1.68, 3.35, cz);
+          b.addGeo(band, 'paintWhite');
+          // painted inner square
+          const bs = new THREE.PlaneGeometry(0.45, 0.59);
+          bs.rotateY(sgn > 0 ? -Math.PI / 2 : Math.PI / 2);
+          bs.translate(postX - sgn * 1.72, 3.22, cz);
+          b.addGeo(bs, 'courtLine');
+          // ring
+          const ringGeo = new THREE.TorusGeometry(0.225, 0.022, 6, 18);
+          ringGeo.rotateX(Math.PI / 2);
+          ringGeo.translate(postX - sgn * 1.90, 3.05, cz);
+          b.addGeo(ringGeo, 'paintRed');
+          // net: a ring of sloping strands
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2;
+            const nx = Math.cos(a) * 0.20, nz = Math.sin(a) * 0.20;
+            const strand = box(0.012, 0.40, 0.012, 1);
+            strand.rotateX(Math.cos(a) * 0.22);
+            strand.rotateZ(Math.sin(a) * 0.22);
+            strand.translate(postX - sgn * 1.90 + nx, 2.84, cz + nz);
+            b.addGeo(strand, 'paintWhite');
+          }
+        }
+
+        /**
+         * Bleachers down one side.
+         *
+         * Three stepped benches on a steel frame along the +Z touchline, which is
+         * where a school shed keeps them. Cheap, and they give the space a scale
+         * reference that a flat floor cannot.
+         */
+        {
+          const bz0 = lz1 + 1.5;
+          for (let i = 0; i < 3; i++) {
+            const y = 0.42 + i * 0.40;
+            const dz = bz0 + i * 0.85;
+            b.add(box(CW * 0.7, 0.09, 0.80, 2), 'bleacherSeat', { pos: [cx, y, dz] });
+            // riser
+            b.add(box(CW * 0.7, 0.34, 0.06, 1), 'bleacherSeat', { pos: [cx, y - 0.19, dz - 0.40] });
+            // frame legs every 3.5 m
+            for (let k = 0; k <= 6; k++) {
+              const x = cx - CW * 0.35 + (k / 6) * CW * 0.7;
+              b.add(box(0.07, y, 0.07, 1), 'steel', { pos: [x, y / 2, dz] });
+            }
+          }
+        }
+      }
     }
 
     /* --------------------------------------------------- covered walkways */
@@ -343,11 +621,179 @@ export class World {
     walk(-12.0, -22.0, -40.0, -22.0);               // across to the shrine approach
     walk(-40.0, -22.0, -40.0, -30.0);               // down to the forecourt
 
+    /* ------------------------------------------------- campus furniture */
+    /**
+     * Flagpole, planters, benches, bins, notice boards, bike racks.
+     *
+     * The yard between the gate and the 4-storey building was 92 x 71 m of bare
+     * paving with a walkway spine across it — from any point on it the campus
+     * looked abandoned, because a paved surface with nothing on it reads as a car
+     * park. These are the objects that make a school yard look used: a flagpole
+     * on the ceremonial axis, planting at the walkway junctions, seating where
+     * people wait, and the small clutter that accumulates along any route.
+     *
+     * Everything here is placed relative to the surveyed walkway spine so it
+     * cannot drift away from the paths people actually walk.
+     */
+    {
+      const fx = -14.0, fz = GZ;                 // ceremonial axis, east of the forecourt
+
+      /**
+       * FLAGPOLE. The single most identifying object on a Philippine campus
+       * yard: a tall white mast on a low plinth with a raised planter bed, and
+       * the flag at the top. Placed on the walkway axis so it terminates the
+       * view from the gate, which is where it belongs.
+       */
+      {
+        // octagonal plinth
+        b.add(cylinder(1.9, 2.1, 0.34, 8), 'concreteTrim',
+          { pos: [fx, 0.17, fz], collide: true });
+        b.add(cylinder(1.55, 1.65, 0.28, 8), 'concreteTrim', { pos: [fx, 0.46, fz] });
+        // soil ring and low planting
+        b.add(cylinder(1.42, 1.42, 0.06, 8), 'soil', { pos: [fx, 0.61, fz] });
+        // mast, in three tapered sections so it does not read as a pipe
+        b.add(cylinder(0.085, 0.12, 4.0, 10), 'paintWhite', { pos: [fx, 2.6, fz] });
+        b.add(cylinder(0.055, 0.085, 3.4, 10), 'paintWhite', { pos: [fx, 6.3, fz] });
+        b.add(cylinder(0.022, 0.055, 2.6, 8), 'paintWhite', { pos: [fx, 9.3, fz] });
+        // gold ball finial
+        b.add(sphere(0.13, 10, 8), 'brass', { pos: [fx, 10.68, fz] });
+        // halyard cleat and a coiled rope at the base
+        b.add(cylinder(0.05, 0.05, 0.18, 6), 'brass', { pos: [fx + 0.13, 1.35, fz] });
+
+        /**
+         * The flag itself: a pleated cloth hung from the halyard, with the blue
+         * field, the red band and the white triangle at the hoist. Modelled as
+         * three thin planes rather than a texture, because the geometry of a
+         * hanging flag in a light breeze is most of what makes it read.
+         */
+        {
+          const FW = 1.85, FH = 0.92, FY = 9.55;
+          const pole = fx + 0.06;
+          // blue upper band
+          b.add(box(0.02, FH * 0.5, FW, 1), 'dctBlueBand',
+            { pos: [pole + FW / 2, FY + FH * 0.25, fz] });
+          // red lower band
+          b.add(box(0.02, FH * 0.5, FW, 1), 'paintRed',
+            { pos: [pole + FW / 2, FY - FH * 0.25, fz] });
+          // white triangle at the hoist, as a thin extruded wedge
+          {
+            const sh = new THREE.Shape();
+            sh.moveTo(0, FH / 2); sh.lineTo(0, -FH / 2); sh.lineTo(1.05, 0);
+            sh.closePath();
+            const tri = new THREE.ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: false });
+            tri.rotateY(-Math.PI / 2);
+            tri.translate(pole + 0.03, FY, fz + FH / 2);
+            b.addGeo(tri, 'paintWhite');
+          }
+          // a few pleats, so the flag is not a flat card
+          for (let i = 0; i < 5; i++) {
+            const t = 0.2 + i * 0.18;
+            b.add(box(0.03, FH * (1 - t * 0.35), 0.05, 1), 'paintWhite',
+              { pos: [pole + FW * t + 0.05, FY - FH * t * 0.16, fz + FH * 0.5 + 0.02] });
+          }
+        }
+      }
+
+      /**
+       * Planters at the walkway junctions. Square tiled boxes with a shrub in
+       * each: these break up the paving and give the walkway edges a reason to
+       * exist. Kept clear of the walking line itself.
+       */
+      const planter = (px, pz) => {
+        b.add(box(1.7, 0.52, 1.7, 2), 'concreteTrim', { pos: [px, 0.26, pz], collide: true });
+        b.add(box(1.5, 0.06, 1.5, 1), 'soil', { pos: [px, 0.54, pz] });
+        // low box hedge in the bed
+        b.add(box(1.25, 0.42, 1.25, 2), 'leafCoreNear', { pos: [px, 0.76, pz] });
+        b.add(sphere(0.52, 9, 7), 'leafCoreNear', { pos: [px, 1.06, pz] });
+      };
+      for (const [px, pz] of [
+        [-12.0, GZ + 2.6], [-12.0, GZ - 2.6],
+        [-30.0, GZ + 2.6], [-30.0, GZ - 2.6],
+        [-48.0, GZ + 2.6], [-48.0, GZ - 2.6],
+        [-12.0, -22.0 + 2.6], [-12.0, -22.0 - 2.6],
+        [-40.0, -22.0 + 2.6],
+      ]) planter(px, pz);
+
+      /**
+       * Benches along the spine, facing the walk. Reuse of the park bench
+       * pattern: two stone standards and a slatted seat.
+       */
+      const yardBench = (bx, bz, face) => {
+        const yaw = face * Math.PI / 2;
+        const seat = box(1.85, 0.09, 0.52, 1.4);
+        seat.rotateY(yaw);
+        seat.translate(bx, 0.46, bz);
+        b.addGeo(seat, 'wood');
+        for (const sgn of [-1, 1]) {
+          const leg = box(0.16, 0.46, 0.46, 1);
+          leg.rotateY(yaw);
+          leg.translate(bx + Math.cos(yaw) * sgn * 0.76, 0.23, bz - Math.sin(yaw) * sgn * 0.76);
+          b.addGeo(leg, 'concreteDark');
+        }
+        const back = box(1.85, 0.40, 0.07, 1.4);
+        back.rotateY(yaw);
+        back.translate(bx, 0.74, bz - face * 0.22);
+        b.addGeo(back, 'wood');
+      };
+      for (let i = 0; i < 6; i++) {
+        yardBench(-16.0 - i * 5.4, GZ + 3.4, 1);
+        if (i < 4) yardBench(-18.0 - i * 5.4, GZ - 3.4, -1);
+      }
+
+      /**
+       * Litter bins and a notice board. Small objects, but their absence is
+       * conspicuous in exactly the way their presence is not.
+       */
+      for (const [bx2, bz2] of [[-13.2, GZ + 3.9], [-33.0, GZ - 3.9], [-47.2, GZ + 3.9]]) {
+        b.add(cylinder(0.24, 0.20, 0.72, 10), 'ironDark', { pos: [bx2, 0.36, bz2] });
+        b.add(cylinder(0.26, 0.26, 0.06, 10), 'ironDark', { pos: [bx2, 0.74, bz2] });
+        b.add(cylinder(0.13, 0.13, 0.02, 8), 'ironDark', { pos: [bx2, 0.78, bz2] });
+      }
+      {
+        // notice board on two posts, facing the walk
+        const nx = -26.0, nz = GZ - 3.6;
+        for (const sgn of [-1, 1]) {
+          b.add(box(0.09, 2.05, 0.09, 1), 'ironDark', { pos: [nx + sgn * 0.95, 1.02, nz] });
+        }
+        b.add(box(2.15, 1.15, 0.08, 1), 'wood', { pos: [nx, 1.62, nz] });
+        b.add(box(1.98, 0.98, 0.03, 1), 'paintWhite', { pos: [nx, 1.62, nz + 0.05] });
+        b.add(box(2.25, 0.10, 0.30, 1), 'wood', { pos: [nx, 2.24, nz] });
+      }
+
+      /**
+       * Bike rack: a row of inverted-U hoops, which is what every Philippine
+       * school actually has. Placed off the walk so it does not block it.
+       */
+      for (let i = 0; i < 5; i++) {
+        const rx = -44.0 + i * 0.86;
+        const rz = GZ - 4.6;
+        const hoop = new THREE.TorusGeometry(0.36, 0.035, 6, 14, Math.PI);
+        hoop.translate(rx, 0.36, rz);
+        b.addGeo(hoop, 'steel');
+        for (const sgn of [-1, 1]) {
+          b.add(cylinder(0.035, 0.035, 0.36, 6), 'steel',
+            { pos: [rx + sgn * 0.36, 0.18, rz] });
+        }
+      }
+    }
+
     const signs = b.signs || [];
     b.buildInto(this.root, M);
     // Handed to the interaction layer so props can be offered by proximity
     // without raycasting merged geometry every frame.
     this.refs = { benches: benchPositions, lamps: lampPositions };
+    /**
+     * RETURn the builder.
+     *
+     * Every `collide: true` in this function — the fountain basin, twelve park
+     * lamp posts, the park benches, the gate forecourt, and now the flagpole and
+     * planters — was being built and then thrown away, because the caller read
+     * `this.buildPlazaExtras(M)` for its side effects only and never collected
+     * `b.colliders`. So the fountain and every lamp post in the park have been
+     * walk-through since they were built.
+     */
+    this.plazaColliders = b.colliders;
+    return b;
   }
 
   /* ---------------------------------------------------------- vegetation */
@@ -356,7 +802,41 @@ export class World {
     const trees = new THREE.Group();
     trees.name = 'trees';
     this.root.add(trees);
+    /**
+     * Trees must not grow through a roof.
+     *
+     * Three did — at (-4,30), (12.5,34) and a palm at (-2,30) — all standing
+     * inside the covered court's footprint (x -9..21, z 19..41) and pushing up
+     * through its canopy. The court's steel posts and roof are built before the
+     * vegetation pass, so nothing was keeping the two apart.
+     *
+     * Rather than hand-moving each offender (and having the next one reappear),
+     * every candidate position is tested against a list of roofed footprints.
+     * Anything inside one is skipped with a console warning, so a misplaced tree
+     * shows up in the log instead of in a screenshot.
+     *
+     * The footprints are written from the surveyed layout, which is itself a trap:
+     * the main building carries rotY = +pi/2, so its 96 m long axis runs along
+     * world Z and not X. Writing it as 98 m wide in X swept up the whole shrine
+     * approach and rejected eleven perfectly good palms.
+     */
+    const roofed = [
+      { name: 'covered court', xMin: -9.6, xMax: 21.6, zMin: 18.4, zMax: 41.6 },
+      { name: 'north classroom block', xMin: 25.4, xMax: 40.6, zMin: -35.7, zMax: 3.6 },
+      { name: 'south classroom block', xMin: 26.4, xMax: 41.6, zMin: 7.4, zMax: 32.7 },
+      { name: 'lab wing', xMin: 33.3, xMax: 54.7, zMin: -40.6, zMax: -27.4 },
+      { name: 'shrine', xMin: -113, xMax: -47, zMin: -71, zMax: -32 },
+      // rotY = +pi/2: the 96 m long axis runs along world Z, not X.
+      { name: 'main building', xMin: -94.3, xMax: -77.7, zMin: -39.1, zMax: 57.9 },
+    ];
+    const blocked = [];
     const addTree = (spec) => {
+      const hit = roofed.find((r) =>
+        spec.x > r.xMin && spec.x < r.xMax && spec.z > r.zMin && spec.z < r.zMax);
+      if (hit) {
+        blocked.push([spec.x, spec.z, hit.name]);
+        return;
+      }
       const res = spec.palm
         ? kit.palm([spec.x, 0, spec.z], spec)
         : kit.broadleaf([spec.x, 0, spec.z], spec);
@@ -450,6 +930,10 @@ export class World {
     kit.build(trees);
     veg.build();
     this.vegetation = veg;
+    if (blocked.length) {
+      console.warn('[vegetation] skipped trees inside roofed areas:',
+        JSON.stringify(blocked));
+    }
     this.colliders.push(...kitColliders(this.treeColliders));
     this.colliders.push(...veg.colliders.filter((c) => (c.max.x - c.min.x) > 0.5));
   }

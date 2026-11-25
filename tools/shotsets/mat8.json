@@ -1,4 +1,0 @@
-[
-  { "name": "m8", "cam": [0,0,0], "look": [1,0,0], "fov": 50, "hour": 15.5,
-    "exec": "(()=>{const S=window.__app.scene;const out=[];S.traverse(o=>{if(o.isMesh&&o.material){const m=o.material;if(!m.isMeshStandardMaterial)out.push(o.name+' TYPE='+m.type);}});return out.slice(0,20).join(' | ')})()" }
-]

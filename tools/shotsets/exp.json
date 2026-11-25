@@ -1,7 +1,0 @@
-[
-  { "name": "e-base",  "cam": [-30, 3.0, -66], "look": [-40, 0.2, -60], "fov": 50, "hour": 15.5 },
-  { "name": "e-half",  "cam": [-30, 3.0, -66], "look": [-40, 0.2, -60], "fov": 50,
-    "exec": "(()=>{window.__app.post.exposure=0.5;return 'exp 0.5'})()" },
-  { "name": "e-plaza", "cam": [-30, 2.4, -66], "look": [-36, 0.1, -62], "fov": 78,
-    "exec": "(()=>{window.__app.post.exposure=0.5;return 'exp 0.5'})()" }
-]

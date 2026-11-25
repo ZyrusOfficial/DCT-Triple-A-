@@ -1,4 +1,0 @@
-[
-  { "name": "dz", "cam": [-46, 1.7, -51.3], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
-    "exec": "(()=>{const a=window.__app;const i=a.inter;const cam=a.player.camera;const d=new THREE.Vector3();cam.getWorldDirection(d);const near=i.zones.filter(z=>Math.hypot(z.x-cam.position.x,z.z-cam.position.z)<z.r).map(z=>z.label);return 'zones='+i.zones.length+' campos='+cam.position.x.toFixed(1)+','+cam.position.z.toFixed(1)+' dir='+d.x.toFixed(2)+','+d.z.toFixed(2)+' near='+JSON.stringify(near)})()" }
-]

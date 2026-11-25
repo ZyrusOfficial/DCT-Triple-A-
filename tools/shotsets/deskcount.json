@@ -1,0 +1,2 @@
+[{"name":"dc","cam":[-86,1.75,-20],"look":[-81,1.4,6],"fov":84,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;let m=null;S.traverse(o=>{if(o.name==='main:deskTop')m=o;});if(!m)return 'none';const p=m.geometry.attributes.position;const boxes=p.count/24;const o=[];const v=new T.Vector3();for(let i=0;i<p.count;i+=24){v.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld);o.push([+v.x.toFixed(1),+v.z.toFixed(1)]);}return JSON.stringify({boxes,first:o.slice(0,10)})})()"}]

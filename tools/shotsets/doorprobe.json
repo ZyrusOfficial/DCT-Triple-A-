@@ -1,0 +1,2 @@
+[{"name":"dp","cam":[-86,1.7,0],"look":[-86,1.7,-20],"fov":80,"hour":11,
+ "exec":"(function(){var T=window.THREE,S=window.__app.scene;var o=[];function cast(px,py,pz,dx,dz,tag){var r=new T.Raycaster(new T.Vector3(px,py,pz),new T.Vector3(dx,0,dz));var h=r.intersectObjects(S.children,true).filter(function(v){return v.object.name.indexOf('main')===0});o.push(tag+' '+(h[0]?h[0].object.name.replace('main:','')+' @d'+h[0].distance.toFixed(2):'NOTHING'));}for(var z=-35;z<=45;z+=10){cast(-86,1.7,z,1,0,'E z'+z);cast(-86,1.7,z,-1,0,'W z'+z);}return o.join(' | ')})()"}]

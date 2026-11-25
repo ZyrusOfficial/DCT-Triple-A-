@@ -1,0 +1,2 @@
+[{"name":"ms","cam":[-86,1.7,-20],"look":[-86,1.7,10],"fov":74,"hour":11,
+ "exec":"(()=>{const S=window.__app.scene;const names=[];S.traverse(o=>{if(o.name&&o.name.includes(':'))names.push(o.name);});const uniq=[...new Set(names)];return JSON.stringify({count:uniq.length,sample:uniq.filter(n=>/plaster|desk|chalk|tileRed/i.test(n))})})()"}]

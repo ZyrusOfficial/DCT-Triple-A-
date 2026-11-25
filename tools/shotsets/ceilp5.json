@@ -1,0 +1,2 @@
+[{"name":"cp5","cam":[-86.0,1.7,-30],"look":[-86.0,1.7,20],"fov":74,"hour":11,
+ "exec":"(()=>{const T=window.THREE,S=window.__app.scene;let m=null;S.traverse(o=>{if(o.name==='main:ceilingBoard')m=o;});const p=m.geometry.attributes.position;const ys=new Set();for(let i=0;i<p.count;i++)ys.add(+p.getY(i).toFixed(2));return JSON.stringify([...ys].sort((a,b)=>a-b))})()"}]

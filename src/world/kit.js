@@ -219,11 +219,24 @@ export function wallWithOpenings(width, height, thickness, openings = [], unit =
 export function windowUnit(w, h, {
   depth = 0.14, frame = 0.06, glassKey = 'glass', frameKey = 'paintWhite',
   grille = false, sill = true, arch = false, mullions = 1, transom = false,
+  /**
+   * `backing` is the opaque recess slab that stops you seeing through the wall.
+   *
+   * It exists for windows applied to a SOLID wall, where without it you would
+   * see a dark void or the sky through a wall that has no hole in it. On a wall
+   * that has been genuinely pierced — the main building's long walls now are —
+   * the backing is exactly wrong: it is an opaque panel hung in the middle of a
+   * real opening, and it renders as a solid slab where the view should be.
+   * Pass false on pierced walls.
+   */
+  backing = true,
 } = {}) {
   const parts = [];
   const g = [];
-  // Recess box (dark interior backing) so we never see through the wall.
-  g.push({ geo: box(w, h, 0.02), key: 'interior', pos: [0, 0, -depth * 0.5] });
+  if (backing) {
+    // Recess box (dark interior backing) so we never see through a solid wall.
+    g.push({ geo: box(w, h, 0.02), key: 'interior', pos: [0, 0, -depth * 0.5] });
+  }
   // Glazing
   g.push({ geo: box(w - frame * 2, h - frame * 2, 0.012), key: glassKey, pos: [0, 0, 0] });
   // Frame: 4 sides

@@ -130,7 +130,20 @@ export function buildGround(parent, M) {
   b.addGeo(rect(-44, -1.5, -14, 12.0, LAWN, TEXSCALE.grass), 'grass');
   // south panels, toward the covered court and the frontage road
   b.addGeo(rect(-44, 16.0, -16, 34.0, LAWN, TEXSCALE.grass), 'grass');
-  b.addGeo(rect(-8, 16.0, 10, 40.0, LAWN, TEXSCALE.grass), 'grass');
+  /**
+   * The panel that used to run (-8,16) -> (10,40) as ONE piece is split around
+   * the covered court, because the court sits at x -9..21, z 19..41 and its own
+   * floor slab is at y 0.06 — BELOW this lawn's 0.078. So the lawn was drawn
+   * straight over the top of it and the basketball court, its painted markings
+   * and its key were all buried: walking in you got a green field with a white
+   * line down it and no court at all. Ray-casting down at the court centre
+   * returned ground:grass at 0.08 ahead of plaza:courtFloor at 0.06.
+   *
+   * Nothing under a court roof should be grass anyway. Leave the two strips
+   * that are genuinely outside the structure.
+   */
+  b.addGeo(rect(-8, 16.0, 10, 19.0, LAWN, TEXSCALE.grass), 'grass');   // north of the court
+  b.addGeo(rect(-8, 41.0, 10, 44.0, LAWN, TEXSCALE.grass), 'grass');   // south of the court
 
   // Central axis: gate -> porte-cochère. This is the ceremonial approach.
   b.addGeo(rect(-74, L.gate.z - 3.6, L.gate.x + 6.0, L.gate.z + 3.6, 0.090, 3.2), 'pavingRed');

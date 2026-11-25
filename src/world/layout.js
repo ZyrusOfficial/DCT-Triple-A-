@@ -14,6 +14,43 @@
  *   MacArthur Hwy   runs N–S at X ≈ 0 (the gate stands on it)
  */
 
+/**
+ * SCOPE — what this reconstruction is actually OF.
+ *
+ * The brief is three subjects and nothing else:
+ *
+ *   1. the DCT campus
+ *   2. the San Nicolas de Tolentino Shrine beside it
+ *   3. the church park in front of the shrine
+ *
+ * Everything else in this file — the municipal hall, the market, the LDS and
+ * Methodist chapels, the north classroom block, the surrounding poblacion — is
+ * surveyed context that was modelled early on. It is OUT OF SCOPE and is no
+ * longer built (see the `scope` switch below). It stays in the layout because
+ * the surveyed coordinates are still useful as reference, and because turning
+ * it back on is then a one-line change rather than an archaeology exercise.
+ *
+ * The point of the cull is not tidiness. `town` alone was 65,000 triangles and
+ * ~15 draw calls of houses, highway power poles, overhead cables and a
+ * 320-sphere horizon ring. Dropping it buys back budget that goes straight into
+ * detail on the three subjects that matter.
+ */
+export const SCOPE = {
+  /** Surrounding poblacion: houses, chapels, market, highway poles, cables. */
+  poblacion: false,
+  /**
+   * Distant horizon ring of tree blobs.
+   *
+   * Kept — it costs almost nothing on its own and without it the ground plane
+   * ends in a hard seam against the sky. It is scenery *behind* the three
+   * subjects, not a fourth subject.
+   */
+  horizon: true,
+  /** Municipal hall across the highway: out of scope, and not visible from the
+   *  shrine park without turning round. */
+  municipal: false,
+};
+
 export const L = {
   /* --------------------------------------------------------------- roads */
   highway: {

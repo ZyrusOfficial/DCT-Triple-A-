@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { Builder, box, cylinder, TEXSCALE } from './kit.js';
-import { L } from './layout.js';
+import { L, SCOPE } from './layout.js';
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -39,8 +39,20 @@ export function buildTown(parent, M, seed = 7731) {
   const isBlocked = (x, z, pad = 0) => blocked.some((k) =>
     x > k.x0 - pad && x < k.x1 + pad && z > Math.min(k.z0, k.z1) - pad && z < Math.max(k.z0, k.z1) + pad);
 
-  /* --------------------------------------------------------- house blocks */
+  /**
+   * Everything from here down to the horizon ring is the surrounding poblacion:
+   * houses, the barangay chapel row, two-storey commercial strip, highway power
+   * poles with their catenary cables. All of it is OUT OF SCOPE — the brief is
+   * the DCT campus, the shrine and the church park. Skipped wholesale when
+   * SCOPE.poblacion is false; the horizon ring below is kept regardless because
+   * without it the ground plane ends in a hard seam against the sky.
+   *
+   * This block was 65,000 triangles.
+   */
   let count = 0;
+  if (SCOPE.poblacion) {
+
+  /* --------------------------------------------------------- house blocks */
   const tryHouse = (x, z, force = false) => {
     if (!force && isBlocked(x, z, 2)) return false;
     const w = 7 + r() * 9;
@@ -173,9 +185,13 @@ export function buildTown(parent, M, seed = 7731) {
     }
   }
 
+  }
+
   /* ---------------------------------------------------- distant tree line */
   // A ring of dark tree blobs breaks the horizon and hides the ground seam.
-  for (let i = 0; i < 320; i++) {
+  // Kept even when the poblacion is culled: it is scenery BEHIND the three
+  // subjects, and without it the ground plane ends in a visible seam.
+  if (SCOPE.horizon) for (let i = 0; i < 320; i++) {
     const a = (i / 260) * Math.PI * 2 + r() * 0.3;
     const rad = 190 + r() * 340;
     const x = -20 + Math.cos(a) * rad;

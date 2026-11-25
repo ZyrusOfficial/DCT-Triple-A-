@@ -114,6 +114,24 @@ export function buildMaterials() {
   M.concrete = STD({ map: T.concreteSlab('#b7b2a8', 3), roughness: 0.9 });
   M.concreteTrim = STD({ map: T.concreteSlab('#cdc8bd', 1), roughness: 0.8 });
   M.concreteDark = STD({ map: T.concreteSlab('#918c84', 4), roughness: 0.94 });
+  /**
+   * Basin liners and any other surface inside a concave well.
+   *
+   * The fountain basin's inner wall is a vertical cylinder facing away from the
+   * sun at every hour, with nothing above it but sky — so at roughness 0.94 it
+   * rendered near-black and the whole fountain read as a black bowl of blue
+   * paint. Real basin walls are tiled pale and are the brightest thing in the
+   * well. This is deliberately albedo-heavy and slightly emissive rather than a
+   * roughness tweak, because the problem is total absence of light, not gloss.
+   *
+   * floorTile(hex, groutHex) — no options object; repeats come from the
+   * geometry's UV scale, not the texture call.
+   */
+  M.basinLiner = STD({
+    map: T.floorTile('#d8d2c4', '#b8b0a0'),
+    roughness: 0.62,
+    emissive: 0x6a6558, emissiveIntensity: 0.30,
+  });
 
   M.paving = STD({ map: T.pavers('#998674'), roughness: 0.88 });
   // Plaza paving: a warmer, slightly darker tan than the campus yard, so the
@@ -163,6 +181,23 @@ export function buildMaterials() {
   M.roadPaintWhite = STD({ color: 0xdfdcd4, roughness: 0.72 });
   M.grassFar = STD({ color: 0x4a5c38, roughness: 1.0 });
   M.courtFloor = STD({ color: 0x4b6b52, roughness: 0.86 });
+  /**
+   * Painted court markings.
+   *
+   * These are thin boxes lifted 1.5 cm off the floor slab rather than a decal, so
+   * there is no z-fighting and no depth-bias trickery. Slightly emissive: a
+   * covered court is lit from the open sides, and white paint in shade goes grey
+   * and stops reading as a line at all.
+   */
+  M.courtLine = STD({
+    color: 0xe8e6de, roughness: 0.72,
+    emissive: 0x4a4842, emissiveIntensity: 0.30,
+  });
+  /** Painted timber bleacher boards. */
+  M.bleacherSeat = STD({
+    map: T.wood('#9a7346'), roughness: 0.78,
+    emissive: 0x3a2c1a, emissiveIntensity: 0.22,
+  });
 
   /* --------------------------------------------------------- town palette */
   M.houseWallA = STD({ map: T.stucco('#d8cfbc', { seed: 61, dirt: 0.6 }), roughness: 0.9 });
@@ -274,16 +309,46 @@ export function buildMaterials() {
   M.dctPink = STD({ color: 0xb8325a, roughness: 0.46, metalness: 0.05 });
   M.statue = STD({ color: 0xd9d2c4, roughness: 0.72, metalness: 0.02 });
   M.statueRobed = STD({ color: 0x1d1a18, roughness: 0.66, metalness: 0.03 });
+  /**
+   * The same robe, for OUTDOOR statues.
+   *
+   * A black Dominican habit in a dim nave is correct and reads well. The same
+   * near-black (#1d1a18) outdoors, lit only by sky against a pale porch, collapses
+   * into a featureless silhouette — the forecourt statue of San Nicolas rendered
+   * as a black cone. Outdoor figures in Philippine churchyards are almost always
+   * painted pale, so this is both more legible and more accurate.
+   */
+  M.statueRobedOutdoor = STD({
+    color: 0xb9b2a4, roughness: 0.74, metalness: 0.03,
+  });
   M.gold = STD({
-    color: 0xc79a38, roughness: 0.3, metalness: 0.9,
-    emissive: 0x6e4e12, emissiveIntensity: 0.42,
+    /**
+     * Emissive was 0.42 on 0x6e4e12, which pushed every gilded surface in the
+     * sanctuary past the bloom threshold and clipped to a flat saturated yellow
+     * — sampled at (255,255,60) on the retablo edging. Gilding should read as
+     * lit metal, not as a light source: the highlight comes from metalness,
+     * the emissive is only there to stop it going black in the shadows.
+     */
+    color: 0xc79a38, roughness: 0.34, metalness: 0.9,
+    emissive: 0x4a3410, emissiveIntensity: 0.2,
   });
   M.fabric = STD({ color: 0x6b1f2e, roughness: 0.9 });
 
   /* ------------------------------------------------------------ water etc */
+  /**
+   * Water.
+   *
+   * With roughness 0.06 and no normal map this was a mirror: under a featureless
+   * sky dome there is nothing to reflect, so every basin and pool on the campus
+   * read as a flat sheet of opaque blue paint. Water reads as water through its
+   * broken, glinting surface — so the fix is ripples, and a slightly rougher
+   * surface that catches the sky as broken highlights instead of one flat value.
+   */
   M.water = new THREE.MeshStandardMaterial({
-    color: 0x6d8fa3, roughness: 0.06, metalness: 0.1,
-    transparent: true, opacity: 0.82, envMapIntensity: 1.6,
+    color: 0x4e7f96, roughness: 0.14, metalness: 0.06,
+    normalMap: T.waterNormals(),
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    transparent: true, opacity: 0.72, envMapIntensity: 2.1,
   });
 
   for (const k of Object.keys(M)) {
@@ -312,9 +377,19 @@ export function buildMaterials() {
     map: T.floorTile('#c9c2b4', '#a8a091'), roughness: 0.42, metalness: 0.03,
     emissive: 0x2a2a28, emissiveIntensity: 0.26,
   });
+  /**
+   * Corridor soffit.
+   *
+   * This was near-white (#cfd6d8) with a strong blue-grey emissive, and in every
+   * open-corridor view the ceiling panels blew out to the same value as the sky —
+   * so the walkways read as open voids with sky showing through the floors.
+   * A soffit under a slab is in shadow: it should be the darkest surface in the
+   * corridor, and the lighting that makes the walkway readable comes from the
+   * fittings hung under it, not from the soffit glowing.
+   */
   M.dctSoffit = STD({
-    map: T.stucco('#cfd6d8', { seed: 47, dirt: 0.35 }), roughness: 0.85,
-    emissive: 0x39414a, emissiveIntensity: 0.34,
+    map: T.stucco('#8d9497', { seed: 47, dirt: 0.45 }), roughness: 0.88,
+    emissive: 0x1d2226, emissiveIntensity: 0.16,
   });
   M.windowGlassN = STD({
     color: 0x2b3a44, roughness: 0.16, metalness: 0.55,
@@ -380,6 +455,25 @@ export function buildMaterials() {
     map: T.stucco('#efe7d6', { seed: 5, dirt: 0.5 }), color: 0xc2cdd4,
     roughness: 0.9, emissive: 0x5a6470, emissiveIntensity: 0.30,
   });
+  /**
+   * Station of the Cross plaques.
+   *
+   * Fourteen separate materials (one per numeral) would be fourteen extra draw
+   * calls for something seen from 10 m away at best. Instead the number is
+   * carried by the texture and the plaques are batched per material, with the
+   * numerals baked into a small pool of textures reused around the nave.
+   */
+  M.stationPlaque = STD({
+    map: T.stationPlaque(1), roughness: 0.62, metalness: 0.12,
+    // The nave is deliberately dim, so a dark painting on a dark wall vanishes.
+    // These are the only warm, bright objects at eye height along the walls and
+    // they need to hold up as such.
+    emissive: 0x6a5230, emissiveIntensity: 0.55,
+  });
+  M.stationFrame = STD({
+    map: T.wood('#4a3618'), roughness: 0.55, metalness: 0.10,
+    emissive: 0x2e2210, emissiveIntensity: 0.30,
+  });
   M.interiorDado = STD({
     map: T.wood('#4b2a14'), roughness: 0.62,
     emissive: 0x3a2814, emissiveIntensity: 0.40,
@@ -406,7 +500,40 @@ export function buildMaterials() {
     color: 0xf2d288, roughness: 0.22, metalness: 0.9,
     emissive: 0x7a5a1c, emissiveIntensity: 0.55,
   });
-  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.28, metalness: 0.04 });
+  /**
+   * The mensa is cream granite, and at roughness 0.28 the sanctuary point light
+   * put a hard specular streak straight down the top slab — seen nearly edge-on
+   * from the nave it clipped the whole altar to pure white. Roughness 0.42
+   * spreads the highlight out so the slab reads as stone with a sheen.
+   */
+  M.altarMarble = STD({ map: T.graniteTile('#ddd8cf'), roughness: 0.42, metalness: 0.04 });
+  /**
+   * Antependium. The reference altar is white marble with a gold front panel,
+   * but the panel needs its own material: reusing M.gold at 0.95 x 3.3 m turned
+   * the entire space under the mensa into a glowing yellow slab. This is the
+   * dimmer, more matte gold of an embroidered frontal.
+   */
+  M.altarFrontal = STD({
+    /**
+     * The antependium was 0.62 metalness with a brass-ish emissive, which under a
+     * point light 1.4 m away became a mirror: at eye level, 1.5 m from the altar,
+     * the frontal filled the whole lower half of the frame with a glowing gold
+     * wall. A real embroidered frontal is CLOTH — it is mostly diffuse, with the
+     * metal in the orphrey threads only. So: low metalness, high roughness, and
+     * a darker base so it reads in shadow rather than glowing through it.
+     */
+    color: 0x7d5f22, roughness: 0.72, metalness: 0.15,
+    emissive: 0x1e1505, emissiveIntensity: 0.1,
+  });
+  /** Sanctuary lamp glass: deep red, strongly emissive — a lamp that never goes out. */
+  M.lampRed = STD({
+    color: 0x5e0f12, roughness: 0.22, metalness: 0.0,
+    emissive: 0x8c1610, emissiveIntensity: 1.5,
+  });
+  M.lampRedGlow = STD({
+    color: 0xd8322a, roughness: 0.18,
+    emissive: 0xff4a30, emissiveIntensity: 2.6,
+  });
   M.altarCloth = STD({ map: T.stucco('#f0ece0', { seed: 74, dirt: 0.15 }), roughness: 0.85, emissive: 0x4a4840, emissiveIntensity: 0.2 });
   M.candleWax = STD({ color: 0xf2ead6, roughness: 0.6, emissive: 0x4a4430, emissiveIntensity: 0.25 });
   M.pewWood = STD({

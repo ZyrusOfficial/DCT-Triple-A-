@@ -1,6 +1,0 @@
-[
-  { "name": "el-grass", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74, "hour": 9.5,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='ground:grass'){o.visible=false;n++;}});return 'ground:grass hidden '+n})()" },
-  { "name": "el-trim", "cam": [-22, 1.7, -51], "look": [-74, 9, -51], "fov": 74,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='ground:concreteTrim'){o.material=new THREE.MeshBasicMaterial({color:0xff0000});n++;}});return 'trim red '+n})()" }
-]

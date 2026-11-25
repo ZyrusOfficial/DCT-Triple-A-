@@ -1,4 +1,0 @@
-[
-  { "name": "m9", "cam": [-30, 3.0, -66], "look": [-40, 0.2, -60], "fov": 50, "hour": 15.5,
-    "exec": "(()=>{const S=window.__app.scene;const ray=new THREE.Raycaster();const c=window.__app.camera;const out=[];const pts=[[0.5,0.25],[0.5,0.35],[0.3,0.3]];for(const [u,v] of pts){ray.setFromCamera(new THREE.Vector2(u*2-1,v*2-1),c);const h=ray.intersectObjects(S.children,true).filter(i=>i.object.isMesh);if(h.length){const o=h[0].object;const m=o.material;out.push(o.name+' d='+h[0].distance.toFixed(1)+' mat='+m.type+' col=#'+m.color.getHexString()+' rough='+m.roughness+' metal='+m.metalness+' env='+m.envMapIntensity);}}return out.join(' | ')})()" }
-]

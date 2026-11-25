@@ -19,7 +19,7 @@
  *     porch on a moulded plinth.
  */
 import * as THREE from 'three';
-import { buildChurchInterior } from './church-interior.js';
+import { buildChurchInterior, robedFigure } from './church-interior.js';
 import { Builder, box, plane, cylinder, sphere, wallWithOpenings, windowUnit,
          column, railingLine, gableRoof, dome, cross, TEXSCALE } from './kit.js';
 import { put } from './place.js';
@@ -155,8 +155,34 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     bp.add(box(0.75, 1.3, 3.6, 2), 'concreteTrim',
       { pos: [sx * (NW / 2 + 4.5), 0.65, NL / 2 + 4.4], collide: true });
   }
-  // Floor slab (authored at grade; the group offset lifts it)
-  b.add(box(NW + 1.2, 0.5, NL + 0.8, TEXSCALE.concrete), 'concreteDark', { pos: [0, 0.25, 0], collide: true });
+  /**
+   * FLOOR SLAB — deliberately NOT inside the nave.
+   *
+   * The church body group is lifted onto the plinth by PLINTH = 1.15 m, so a slab
+   * authored at y 0.25 with 0.5 thickness lands with its TOP at 1.65 m — half a
+   * metre above the interior's own floor at 1.15 + 0.03. It out-ranked
+   * everything the interior built in the sanctuary: ray-casting straight down
+   * over the altar gave church:concreteDark at 1.65, ahead of
+   * church-interior:sanctuaryFloor at 1.21, and the sanctuary read as a blown-out
+   * white pool with a floating altar.
+   *
+   * This is the SAME class of bug as the tileCream nave floor that used to sit at
+   * y 0.52 and bury the whole interior. The lesson generalises: the exterior
+   * shell must never own a surface inside the nave. What is left here is a narrow
+   * apron ring — enough to close the gap between the wall footings and the
+   * plinth from outside, with a hole where the interior's floor goes.
+   */
+  for (const [aw, ad, ax, az] of [
+    // front and rear aprons, outside the nave
+    [NW + 1.2, 0.6, 0, NL / 2 + 0.1],
+    [NW + 1.2, 0.6, 0, -NL / 2 - 0.1],
+    // side aprons
+    [0.6, NL + 1.4, NW / 2 + 0.3, 0],
+    [0.6, NL + 1.4, -NW / 2 - 0.3, 0],
+  ]) {
+    b.add(box(aw, 0.5, ad, TEXSCALE.concrete), 'concreteDark',
+      { pos: [ax, 0.25, az], collide: true });
+  }
   /**
    * NO NAVE FLOOR HERE.
    *
@@ -443,12 +469,47 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     }
 
     /* --------------------------- two side doors, simpler ------------------ */
+    /**
+     * Side doors.
+     *
+     * These were a single flat slab of `woodDark` recessed behind the porch,
+     * with a plain surround. In shade they carried no value at all and read as
+     * two black holes punched in the façade — the first thing the eye went to
+     * from the plaza.
+     *
+     * A door is legible from its construction, not its colour: two leaves, a
+     * centre stile, raised panels, a transom over the head, a threshold and a
+     * pair of handles. All of that sits a few centimetres proud of the wall, so
+     * it catches the porch light and the opening stops being a void.
+     */
     for (const s of [-1, 1]) {
       const dz = facadeZ + 0.42;
       const dx = s * (NW / 2 - 2.4);
-      b.add(box(2.1, 4.0, 0.14, 1.2), 'woodDark', { pos: [dx, 2.05, dz], collide: true });
-      b.add(box(2.35, 0.22, 0.42, 1.5), 'churchTrim', { pos: [dx, 4.1, dz + 0.05] });
-      for (const q of [-1, 1]) b.add(box(0.2, 4.0, 0.42, 1.5), 'churchTrim', { pos: [dx + q * 1.15, 2.05, dz + 0.05] });
+      // recess: a shallow dark reveal behind the leaves
+      b.add(box(2.1, 3.55, 0.10, 1.2), 'woodDark', { pos: [dx, 1.85, dz - 0.03], collide: true });
+      // two leaves, each with a centre stile and two raised panels
+      for (const q of [-1, 1]) {
+        const lx = dx + q * 0.51;
+        b.add(box(0.98, 3.5, 0.06, 1.2), 'wood', { pos: [lx, 1.82, dz + 0.05] });
+        for (const py of [0.85, 2.15]) {
+          b.add(box(0.74, 1.05, 0.035, 1), 'woodDark', { pos: [lx, py, dz + 0.09] });
+          b.add(box(0.80, 1.11, 0.02, 1), 'churchTrim', { pos: [lx, py, dz + 0.075] });
+        }
+        // handle
+        b.add(cylinder(0.028, 0.028, 0.16, 6), 'brass',
+          { pos: [lx - q * 0.36, 1.62, dz + 0.11], rot: [Math.PI / 2, 0, 0] });
+      }
+      // transom light over the head
+      b.add(box(1.96, 0.42, 0.08, 1), 'windowGlow',
+        { pos: [dx, 3.78, dz + 0.02] });
+      b.add(box(2.1, 0.09, 0.14, 1), 'churchTrim', { pos: [dx, 3.56, dz + 0.04] });
+      // surround, archivolt and threshold
+      b.add(box(2.35, 0.22, 0.44, 1.5), 'churchTrim', { pos: [dx, 4.06, dz + 0.05] });
+      for (const q of [-1, 1]) {
+        b.add(box(0.22, 4.0, 0.44, 1.5), 'churchTrim', { pos: [dx + q * 1.16, 2.05, dz + 0.05] });
+        b.add(box(0.10, 3.6, 0.10, 1), 'pavingRed', { pos: [dx + q * 1.30, 1.80, dz + 0.12] });
+      }
+      b.add(box(2.5, 0.10, 0.62, 1.5), 'pavingRed', { pos: [dx, 0.05, dz + 0.20] });
     }
   }
 
@@ -462,13 +523,30 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
     b.add(box(2.4, 0.5, 2.4, 1.5), 'concreteTrim', { pos: [sx, 0.25, sz], collide: true });
     b.add(box(1.9, 0.9, 1.9, 1.5), 'concrete', { pos: [sx, 0.95, sz] });
     b.add(box(1.3, 0.35, 1.3, 1.5), 'pavingRed', { pos: [sx, 1.55, sz] });
-    // Robed figure (simplified but readable silhouette)
-    b.add(cylinder(0.34, 0.55, 1.5, 10), 'statueRobed', { pos: [sx, 2.45, sz] });
-    b.add(cylinder(0.28, 0.34, 0.6, 10), 'statueRobed', { pos: [sx, 3.45, sz] });
-    b.add(sphere(0.19, 10), 'statue', { pos: [sx, 3.86, sz] });
-    // halo + book
-    b.add(cylinder(0.3, 0.3, 0.05, 12), 'gold', { pos: [sx, 3.92, sz - 0.12], rot: [Math.PI / 2 - 0.35, 0, 0] });
-    b.add(box(0.36, 0.46, 0.11, 1), 'woodDark', { pos: [sx + 0.44, 2.85, sz + 0.16], rot: [0, 0.2, -0.15] });
+    /**
+     * San Nicolas de Tolentino in the porch forecourt.
+     *
+     * This is the figure a visitor walks up to, so it gets the same lathed-robe
+     * builder as the retablo niches instead of three stacked cylinders — which at
+     * this scale rendered as a black cone with a white ball balanced on it.
+     *
+     * Built at 1.35x niche scale and in the OUTDOOR robe material. The near-black
+     * Dominican habit used inside the nave collapses into a featureless silhouette
+     * out here, where the only light is sky against a pale porch; churchyard
+     * statues here are almost always painted pale anyway.
+     */
+    {
+      const fig = robedFigure({
+        robe: 'statueRobedOutdoor', dark: 'statueRobedOutdoor', skin: 'statue',
+        halo: true, book: true, staff: false, scale: 1.35,
+      });
+      for (const { geo, key } of fig) {
+        const gg = geo.clone();
+        gg.rotateY(0.7);
+        gg.translate(sx, 1.72, sz);
+        b.addGeo(gg, key);
+      }
+    }
     b.addCollider([sx - 1.3, 0, sz - 1.3], [sx + 1.3, 1.8, sz + 1.3]);
   }
 
@@ -606,8 +684,24 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
    */
   const naveLight = new THREE.PointLight(0xfff6e8, 20, 52, 1.15);
   naveLight.position.set(0, WH - 1.6, 4.0);
-  const altarLight = new THREE.PointLight(0xffeecd, 18, 30, 1.3);
-  altarLight.position.set(0, WH - 2.4, -NL / 2 + 4.0);
+  // Intensity 18 at 9.4 m directly over the altar turned the whole sanctuary
+  // into a white bloom (the marble and cloth both clipped to pure white, so the
+  // altar read as a glowing slab). Drop it, pull it back behind the retablo so
+  // it rakes the reredos instead of spot-lighting the mensa, and warm it.
+  /**
+   * Sanctuary light. Warm, low, and placed FORWARD of the retablo.
+   *
+   * Two things had to be fixed here and the second only showed up at 2 m.
+   * First it was intensity 18 hung at 9.4 m over the altar, which clipped the
+   * mensa to flat white. Then, pulled back behind the reredos to stop that, it
+   * sat directly above the antependium and put a hot specular pool on the gold
+   * frontal — the altar read as lit from inside. Moving it forward of the
+   * retablo and up to cornice height means it lights the FLOOR and the altar
+   * from the front-top, the way the real pendant fixtures hang, and both the
+   * frontal and the mensa fall outside its strongest specular lobe.
+   */
+  const altarLight = new THREE.PointLight(0xffdcae, 5.0, 18, 1.7);
+  altarLight.position.set(0, WH - 2.9, -NL / 2 + 3.4);
   /**
    * Low fill, standing in for floor bounce.
    *
@@ -619,8 +713,20 @@ export function buildChurch(parent, M, { nightMode = false } = {}) {
    * give the floor and pews a base level so the nave does not read as a pit
    * below a bright ceiling.
    */
-  const floorFill = new THREE.PointLight(0xffe9cc, 14, 34, 1.0);
-  floorFill.position.set(0, 1.6, -2.0);
+  const floorFill = new THREE.PointLight(0xffe9cc, 9, 26, 1.35);
+  /**
+   * z matters more than it looks.
+   *
+   * This was (0, 1.6, -2.0) at intensity 14 with decay 1.0. The altar sits at
+   * lz -15.8, so the fill light stood 13.8 m in front of it at 1.6 m — head
+   * height — and with that shallow decay its 14 units were still dumping nearly
+   * a third of their power into the antependium from straight on, which is the
+   * hard yellow pool that survived every change to the sanctuary light. Pulled
+   * back to mid-nave, dropped, shortened in range and decayed properly, it does
+   * the job it was written for (lifting the floor and pews out of the dark)
+   * without touching the chancel.
+   */
+  floorFill.position.set(0, 1.1, NL / 2 - 9.0);
   group.add(naveLight, altarLight, floorFill);
   churchLights.push(naveLight, altarLight, floorFill);
 

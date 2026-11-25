@@ -555,19 +555,31 @@ export function dctCrest() {
     x.clearRect(0, 0, S, S);
     x.translate(S / 2, S / 2);
     // Shield
-    x.fillStyle = '#f2ece0'; x.strokeStyle = '#7d1428'; x.lineWidth = 10;
+    x.fillStyle = '#8f1c2c'; x.strokeStyle = '#5d0f1e'; x.lineWidth = 14;
     x.beginPath();
     x.moveTo(0, -190); x.bezierCurveTo(120, -190, 160, -120, 160, -40);
     x.bezierCurveTo(160, 90, 80, 160, 0, 200);
     x.bezierCurveTo(-80, 160, -160, 90, -160, -40);
     x.bezierCurveTo(-160, -120, -120, -190, 0, -190);
     x.closePath(); x.fill(); x.stroke();
-    // Dominican cross (black & white)
-    x.fillStyle = '#1a1a1a';
-    x.fillRect(-22, -150, 44, 300);
-    x.fillRect(-110, -66, 220, 44);
+    /**
+     * Dominican cross (black & white).
+     *
+     * Strokes are deliberately heavy: the shield is viewed from the highway at
+     * 20 m+, where a 44 px arm is under a pixel and the whole crest averages to a
+     * pale smear. 80 px arms with gold bolt heads give it something to read as at
+     * any range.
+     */
+    x.fillStyle = '#141414';
+    x.fillRect(-40, -178, 80, 356);
+    x.fillRect(-136, -84, 272, 68);
     x.fillStyle = '#f2ece0';
-    x.fillRect(-22, -150, 44, 60);
+    x.fillRect(-40, -178, 80, 104);
+    // bolt heads, so the plate reads as metal hardware at any range
+    x.fillStyle = '#c9a227';
+    for (const [bx, by] of [[-118, -150], [118, -150], [-118, 150], [118, 150]]) {
+      x.beginPath(); x.arc(bx, by, 13, 0, Math.PI * 2); x.fill();
+    }
     // Sunburst
     x.strokeStyle = '#c9a227'; x.lineWidth = 5;
     for (let i = 0; i < 12; i++) {
@@ -749,6 +761,101 @@ export { valueNoise };
  * Sobel gradients over the height field, packed to RGB. `strength` scales the
  * slope, so a subtle stucco grain and a deep rock face can share this.
  */
+/**
+ * Ripple normal map for standing water.
+ *
+ * Water in the fountains and the gate pool had no map at all — a smooth
+ * MeshStandardMaterial with roughness 0.06, which under a plain sky dome has
+ * nothing to reflect and so reads as a flat sheet of blue paint. Real water
+ * reads as water almost entirely through its broken, glinting surface, so the
+ * cheapest convincing fix is a normal map, not a more complicated shader.
+ *
+ * Interference of a few sines at unrelated angles and periods, so the pattern
+ * does not repeat visibly at the small scale water is tiled at.
+ */
+/**
+ * A Station of the Cross plaque.
+ *
+ * The fourteen stations line the nave of every Philippine parish church, hung on
+ * the piers at eye height. Each is a small framed relief: a gilt border, a dark
+ * ground, and a number in the corner. Drawing the relief under a few painted
+ * figures reads correctly at nave distance; the frame and numeral do most of the
+ * work of identifying it.
+ *
+ * @param n station number, 1..14
+ */
+export function stationPlaque(n = 1) {
+  return memo(`station:${n}`, () => {
+    const S = 256;
+    const { c, x } = canvas(S, S);
+    // gilt frame
+    x.fillStyle = '#8a6a20'; x.fillRect(0, 0, S, S);
+    x.fillStyle = '#c9a227'; x.fillRect(6, 6, S - 12, S - 12);
+    x.fillStyle = '#6b4f16'; x.fillRect(16, 16, S - 32, S - 32);
+    // dark ground with a faint warm gradient, like age-darkened paint
+    const g = x.createLinearGradient(0, 16, 0, S - 16);
+    g.addColorStop(0, '#3a2a1e');
+    g.addColorStop(1, '#241a13');
+    x.fillStyle = g; x.fillRect(16, 16, S - 32, S - 32);
+
+    // ground line
+    x.fillStyle = '#4a3a28';
+    x.fillRect(16, S - 78, S - 32, 62);
+
+    // three painted figures: two standing, one fallen, as a suggested group
+    const fig = (cx, cy, h, w, tone) => {
+      x.fillStyle = tone;
+      x.beginPath(); x.ellipse(cx, cy - h * 0.08, w * 0.5, h * 0.42, 0, 0, Math.PI * 2); x.fill();
+      x.beginPath(); x.arc(cx, cy - h * 0.62, w * 0.30, 0, Math.PI * 2); x.fill();
+    };
+    fig(S * 0.40, S - 46, 92, 34, '#6d5a44');
+    fig(S * 0.62, S - 44, 88, 32, '#7d6a50');
+    // the fallen figure, lower and wider
+    x.fillStyle = '#5d4a38';
+    x.beginPath(); x.ellipse(S * 0.52, S - 52, 44, 17, 0, 0, Math.PI * 2); x.fill();
+
+    // a cross, small and pale, held above the group
+    x.fillStyle = '#b9a06a';
+    x.fillRect(S * 0.50 - 5, 44, 10, 74);
+    x.fillRect(S * 0.50 - 24, 62, 48, 9);
+
+    // numeral, bottom-left in the frame
+    x.fillStyle = '#d8bc74';
+    x.font = 'bold 34px sans-serif';
+    x.fillText(String(n), 24, S - 26);
+
+    return finish(c, { repeat: [1, 1], aniso: 4 });
+  });
+}
+
+export function waterNormals() {
+  return memo('waterN', () => {
+    const S = 256;
+    const h = new Float32Array(S * S);
+    // angle, cycles across the tile, amplitude
+    const waves = [
+      [0.0, 3, 1.0], [0.9, 5, 0.62], [2.1, 2, 0.74], [3.4, 7, 0.38], [5.2, 4, 0.5],
+    ];
+    for (let j = 0; j < S; j++) {
+      for (let i = 0; i < S; i++) {
+        const u = i / S, v = j / S;
+        let a = 0;
+        for (const [ang, cyc, amp] of waves) {
+          const k = cyc * Math.PI * 2;
+          a += amp * Math.sin(k * (Math.cos(ang) * u + Math.sin(ang) * v));
+        }
+        h[j * S + i] = a;
+      }
+    }
+    const c = normalFromHeight(h, S, S, 0.055);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(3, 3);
+    t.anisotropy = 4;
+    return t;
+  });
+}
+
 export function normalFromHeight(h, w, sv, strength = 2.0) {
   const c = document.createElement('canvas');
   c.width = w; c.height = sv;

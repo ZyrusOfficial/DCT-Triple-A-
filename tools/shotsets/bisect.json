@@ -1,0 +1,6 @@
+[
+ {"name":"bi-nowood","cam":[-86.0,1.75,14.0],"look":[-86.0,1.7,50.0],"fov":74,"hour":11,
+  "exec":"(()=>{const S=window.__app.scene;let n=0;S.traverse(o=>{if(o.name==='main:wood'){o.visible=false;n++;}});return 'hid '+n+' wood meshes'})()"},
+ {"name":"bi-nopla","cam":[-86.0,1.75,14.0],"look":[-86.0,1.7,50.0],"fov":74,"hour":11,
+  "exec":"(()=>{const S=window.__app.scene;let n=0;S.traverse(o=>{if(o.name==='main:wood'||o.name==='main:interiorPlaster'){o.visible=false;n++;}});return 'hid '+n})()"}
+]

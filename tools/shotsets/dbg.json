@@ -1,5 +1,0 @@
-[
-  { "name": "d-normal", "cam": [-20, 2.2, -51], "look": [-74, 9.5, -51], "fov": 72, "hour": 15.5,
-    "exec": "(()=>{const S=new THREE.Scene();window.__nmat=new THREE.MeshNormalMaterial({flatShading:false});window.__app.scene.traverse(o=>{if(o.isMesh&&o.material&&o.material.name!=='sky'){window.__origMat=window.__origMat||new Map();window.__origMat.set(o,o.material);o.material=window.__nmat;}});return 'normal-mat on'})()" },
-  { "name": "d-normal2", "cam": [-52, 5.0, -34], "look": [-70, 14, -48], "fov": 66, "hour": 15.5 }
-]

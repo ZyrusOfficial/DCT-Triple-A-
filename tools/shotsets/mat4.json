@@ -1,8 +1,0 @@
-[
-  { "name": "m4-a", "cam": [-50, 4.5, -33], "look": [-70, 13, -48], "fov": 70, "hour": 15.5,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='church:interior'){o.material=new THREE.MeshBasicMaterial({color:0xff0000});n++;}});return 'interior red '+n})()" },
-  { "name": "m4-b", "cam": [-50, 4.5, -33], "look": [-70, 13, -48], "fov": 70,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='church:glassDark'){o.material=new THREE.MeshBasicMaterial({color:0x00ffff});n++;}});return 'glassDark cyan '+n})()" },
-  { "name": "m4-c", "cam": [-50, 4.5, -33], "look": [-70, 13, -48], "fov": 70,
-    "exec": "(()=>{let n=0;window.__app.scene.traverse(o=>{if(o.isMesh&&o.name==='church:churchWall'){o.material=new THREE.MeshBasicMaterial({color:0x0000ff});n++;}});return 'churchWall blue '+n})()" }
-]
