@@ -923,9 +923,23 @@ export function buildMainBuilding(parent, M, opts = {}) {
             rot: [0, 0, Math.PI / 2],
           });
 
-          // pinned display board on the partition
-          b.add(box(bayW * 0.42, 0.85, 0.05, 1.2), 'paintCream', {
-            pos: [axOf(zl + bayW * 0.16), y0 + 1.62, azOf(xlMid)],
+          /**
+           * Pinned display board, flat against the PARTITION.
+           *
+           * The box used to be (bayW * 0.42) long on the LENGTH axis and 0.05
+           * thick on the depth axis, but it was positioned at azOf(xlMid) — the
+           * middle of the room in DEPTH. So the board was a 4 m long, 0.85 m
+           * tall sheet standing free in open air at eye height, broad face to the
+           * window wall, which is exactly the big tan panel that floated across
+           * the classroom after the windows went in.
+           *
+           * The partition runs across the room's depth (it separates one bay from
+           * the next along the length), so a board hung on it must be thin in the
+           * LENGTH axis and long in the DEPTH axis. That means the length goes in
+           * the box's Z argument, as it does for the chalkboard.
+           */
+          b.add(box(0.05, 0.85, roomD * 0.42, 1.2), 'paintCream', {
+            pos: [axOf(boardZ + 0.03), y0 + 1.62, azOf(xlMid)],
           });
         }
       }
